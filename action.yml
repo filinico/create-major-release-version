@@ -1,11 +1,10 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Create major release version'
+description: 'Create and configure new major version of new release'
+author: 'Nicolas Filippelli'
 inputs:
-  milliseconds: # change this
+  GITHUB_TOKEN:
+    description: "User token of service account."
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
 runs:
   using: 'node12'
   main: 'dist/index.js'
