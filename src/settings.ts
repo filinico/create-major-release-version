@@ -8,6 +8,7 @@ export const configureSettings = async (
   settingsPath: string,
   versionPrefix: string
 ): Promise<void> => {
+  core.info(`settingsPath:${settingsPath}`)
   const filePath = path.resolve(workspace, settingsPath)
   const rawData = fs.readFileSync(filePath, 'utf8')
   const settings = JSON.parse(rawData)
@@ -18,9 +19,12 @@ export const configureSettings = async (
   const majorVersion = versions[0]
   const nextArtifactVersion = `${versionPrefix}${majorVersion}`
   const nextDbVersion = `${versionPrefix}0.0${majorVersion}`
+  core.info(`nextArtifactVersion:${nextArtifactVersion}`)
+  core.info(`nextDbVersion:${nextDbVersion}`)
   newDevelopSettings.artifact.version = nextArtifactVersion
   newDevelopSettings.database.version = nextDbVersion
   const strSettings = JSON.stringify(settings)
   core.info(`new settings:${strSettings}`)
   fs.writeFileSync(filePath, strSettings)
+  core.info('settings changed')
 }

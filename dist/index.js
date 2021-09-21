@@ -6537,14 +6537,14 @@ const createDirectory = (directoryName) => __awaiter(void 0, void 0, void 0, fun
         core.error(stderr.toString());
     }
 });
-const createBranch = (releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
-    const { stderr } = yield promisify_child_process_exec(`git checkout -b release/${releaseVersion} develop`);
+const createBranch = (branchName, target) => __awaiter(void 0, void 0, void 0, function* () {
+    const { stderr } = yield promisify_child_process_exec(`git checkout -b ${branchName} ${target}`);
     if (stderr) {
         lib_core.error(stderr.toString());
     }
 });
-const doesBranchExist = (releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
-    const { stderr, stdout } = yield promisify_child_process_exec(`git ls-remote origin release/${releaseVersion}`);
+const doesBranchExist = (branchName) => __awaiter(void 0, void 0, void 0, function* () {
+    const { stderr, stdout } = yield promisify_child_process_exec(`git ls-remote origin ${branchName}`);
     if (stderr) {
         lib_core.error(stderr.toString());
     }
@@ -6587,6 +6587,7 @@ var settings_awaiter = (undefined && undefined.__awaiter) || function (thisArg, 
 
 
 const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefix) => settings_awaiter(void 0, void 0, void 0, function* () {
+    lib_core.info(`settingsPath:${settingsPath}`);
     const filePath = external_path_.resolve(workspace, settingsPath);
     const rawData = external_fs_.readFileSync(filePath, 'utf8');
     const settings = JSON.parse(rawData);
@@ -6597,11 +6598,14 @@ const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefi
     const majorVersion = versions[0];
     const nextArtifactVersion = `${versionPrefix}${majorVersion}`;
     const nextDbVersion = `${versionPrefix}0.0${majorVersion}`;
+    lib_core.info(`nextArtifactVersion:${nextArtifactVersion}`);
+    lib_core.info(`nextDbVersion:${nextDbVersion}`);
     newDevelopSettings.artifact.version = nextArtifactVersion;
     newDevelopSettings.database.version = nextDbVersion;
     const strSettings = JSON.stringify(settings);
     lib_core.info(`new settings:${strSettings}`);
     external_fs_.writeFileSync(filePath, strSettings);
+    lib_core.info('settings changed');
 });
 
 ;// CONCATENATED MODULE: ./src/version.ts
@@ -6635,12 +6639,20 @@ const onReleaseCreated = (actionContext) => eventHandler_awaiter(void 0, void 0,
     lib_core.info(`revision:${sha}`);
     const releaseVersion = getVersionFromTag(tagPrefix, tag_name);
     lib_core.info(`Release version:${releaseVersion}`);
-    if (tag_name.endsWith('.0.0') && !(yield doesBranchExist(releaseVersion))) {
+    const releaseBranch = `release/${releaseVersion}`;
+    lib_core.info(`Release branch:${releaseBranch}`);
+    if (tag_name.endsWith('.0.0') && !(yield doesBranchExist(releaseBranch))) {
         yield gotoDirectory(workspace);
-        yield createBranch(releaseVersion);
+        yield createBranch(releaseBranch, target_commitish);
+        lib_core.info(`Release branch checkout`);
         yield configureSettings(releaseVersion, workspace, settingsPath, versionPrefix);
         yield commit(`setup new version ${releaseVersion}`);
+        lib_core.info(`changes committed`);
         yield push();
+        lib_core.info(`changes pushed`);
+    }
+    else {
+        lib_core.error(`Release branch ${releaseBranch} already exists or isn't a major version ending with .0.0`);
     }
 });
 

@@ -15,21 +15,18 @@ export const createDirectory = async (directoryName: string): Promise<void> => {
   }
 }
 
-export const createBranch = async (releaseVersion: string): Promise<void> => {
-  const {stderr} = await exec(
-    `git checkout -b release/${releaseVersion} develop`
-  )
+export const createBranch = async (
+  branchName: string,
+  target: string
+): Promise<void> => {
+  const {stderr} = await exec(`git checkout -b ${branchName} ${target}`)
   if (stderr) {
     core.error(stderr.toString())
   }
 }
 
-export const doesBranchExist = async (
-  releaseVersion: string
-): Promise<boolean> => {
-  const {stderr, stdout} = await exec(
-    `git ls-remote origin release/${releaseVersion}`
-  )
+export const doesBranchExist = async (branchName: string): Promise<boolean> => {
+  const {stderr, stdout} = await exec(`git ls-remote origin ${branchName}`)
   if (stderr) {
     core.error(stderr.toString())
   }
