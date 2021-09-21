@@ -6538,7 +6538,7 @@ const createDirectory = (directoryName) => __awaiter(void 0, void 0, void 0, fun
     }
 });
 const createBranch = (branchName, target) => __awaiter(void 0, void 0, void 0, function* () {
-    const { stderr } = yield promisify_child_process_exec(`git checkout -b ${branchName} ${target}`);
+    const { stderr } = yield promisify_child_process_exec(`git checkout -b ${branchName} origin/${target}`);
     if (stderr) {
         lib_core.error(stderr.toString());
     }

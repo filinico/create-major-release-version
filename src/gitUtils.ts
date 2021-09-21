@@ -19,7 +19,7 @@ export const createBranch = async (
   branchName: string,
   target: string
 ): Promise<void> => {
-  const {stderr} = await exec(`git checkout -b ${branchName} ${target}`)
+  const {stderr} = await exec(`git checkout -b ${branchName} origin/${target}`)
   if (stderr) {
     core.error(stderr.toString())
   }
