@@ -9,7 +9,7 @@ import {
 } from './gitUtils'
 import {Context} from '@actions/github/lib/context'
 import {configureSettings} from './settings'
-import {getVersionFromBranch} from './version'
+import {getVersionFromTag} from './version'
 type GitHub = ReturnType<typeof github.getOctokit>
 
 export interface GitHubContext {
@@ -18,12 +18,14 @@ export interface GitHubContext {
   workspace: string
   settingsPath: string
   versionPrefix: string
+  tagPrefix: string
 }
 
 export const onReleaseCreated = async (
   actionContext: GitHubContext
 ): Promise<void> => {
-  const {context, workspace, settingsPath, versionPrefix} = actionContext
+  const {context, workspace, settingsPath, versionPrefix, tagPrefix} =
+    actionContext
   const {
     payload: {
       release: {tag_name, target_commitish, prerelease, id}
@@ -35,7 +37,7 @@ export const onReleaseCreated = async (
   core.info(`prerelease:${prerelease}`)
   core.info(`id:${id}`)
   core.info(`revision:${sha}`)
-  const releaseVersion = getVersionFromBranch(target_commitish, 'release')
+  const releaseVersion = getVersionFromTag(tagPrefix, tag_name)
   core.info(`Release version:${releaseVersion}`)
 
   if (tag_name.endsWith('.0.0') && !(await doesBranchExist(releaseVersion))) {

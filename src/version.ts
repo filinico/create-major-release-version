@@ -1,11 +1,8 @@
-export const getVersionFromBranch = (
-  branchName: string,
-  branchType: string
+export const getVersionFromTag = (
+  tagPrefix: string,
+  tagName: string
 ): string => {
-  if (branchName.includes(branchType)) {
-    const sourceBranchSuffixArray = branchName.split('/')
-    if (sourceBranchSuffixArray.length > 1)
-      return sourceBranchSuffixArray[sourceBranchSuffixArray.length - 1]
-  }
-  return branchName
+  const versionNumber = tagName.replace(tagPrefix, '')
+  const versions = versionNumber.split('.')
+  return versions.slice(0, 2).join('.')
 }

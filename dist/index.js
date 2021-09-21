@@ -6605,13 +6605,10 @@ const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefi
 });
 
 ;// CONCATENATED MODULE: ./src/version.ts
-const getVersionFromBranch = (branchName, branchType) => {
-    if (branchName.includes(branchType)) {
-        const sourceBranchSuffixArray = branchName.split('/');
-        if (sourceBranchSuffixArray.length > 1)
-            return sourceBranchSuffixArray[sourceBranchSuffixArray.length - 1];
-    }
-    return branchName;
+const getVersionFromTag = (tagPrefix, tagName) => {
+    const versionNumber = tagName.replace(tagPrefix, '');
+    const versions = versionNumber.split('.');
+    return versions.slice(0, 2).join('.');
 };
 
 ;// CONCATENATED MODULE: ./src/eventHandler.ts
@@ -6629,14 +6626,14 @@ var eventHandler_awaiter = (undefined && undefined.__awaiter) || function (thisA
 
 
 const onReleaseCreated = (actionContext) => eventHandler_awaiter(void 0, void 0, void 0, function* () {
-    const { context, workspace, settingsPath, versionPrefix } = actionContext;
+    const { context, workspace, settingsPath, versionPrefix, tagPrefix } = actionContext;
     const { payload: { release: { tag_name, target_commitish, prerelease, id } }, sha } = context;
     lib_core.info(`tag_name:${tag_name}`);
     lib_core.info(`target_commitish:${target_commitish}`);
     lib_core.info(`prerelease:${prerelease}`);
     lib_core.info(`id:${id}`);
     lib_core.info(`revision:${sha}`);
-    const releaseVersion = getVersionFromBranch(target_commitish, 'release');
+    const releaseVersion = getVersionFromTag(tagPrefix, tag_name);
     lib_core.info(`Release version:${releaseVersion}`);
     if (tag_name.endsWith('.0.0') && !(yield doesBranchExist(releaseVersion))) {
         yield gotoDirectory(workspace);
@@ -6666,6 +6663,7 @@ function run() {
             const githubToken = lib_core.getInput('GITHUB_TOKEN', { required: true });
             const settingsPath = lib_core.getInput('SETTINGS_FILE', { required: true });
             const versionPrefix = lib_core.getInput('VERSION_PREFIX', { required: true });
+            const tagPrefix = lib_core.getInput('TAG_PREFIX', { required: true });
             lib_core.info(`GITHUB workspace=${process.env.GITHUB_WORKSPACE}`);
             if (process.env.GITHUB_WORKSPACE === undefined) {
                 throw new Error('GITHUB_WORKSPACE not defined.');
@@ -6676,7 +6674,8 @@ function run() {
                 context: github.context,
                 workspace: process.env.GITHUB_WORKSPACE,
                 settingsPath,
-                versionPrefix
+                versionPrefix,
+                tagPrefix
             };
             lib_core.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`);
             lib_core.info(`GITHUB context action=${gitHubContext.context.payload.action}`);

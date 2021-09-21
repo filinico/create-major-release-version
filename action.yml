@@ -11,6 +11,9 @@ inputs:
   VERSION_PREFIX:
     description: "Prefix of the version."
     required: true
+  TAG_PREFIX:
+    description: "prefix for the versioning"
+    required: true
 runs:
   using: 'node12'
   main: 'dist/index.js'
