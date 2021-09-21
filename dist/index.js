@@ -6543,6 +6543,18 @@ const createBranch = (releaseVersion) => __awaiter(void 0, void 0, void 0, funct
         lib_core.error(stderr.toString());
     }
 });
+const doesBranchExist = (releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
+    const { stderr, stdout } = yield promisify_child_process_exec(`git ls-remote origin release/${releaseVersion}`);
+    if (stderr) {
+        lib_core.error(stderr.toString());
+    }
+    if (stdout) {
+        return true;
+    }
+    else {
+        return false;
+    }
+});
 const commit = (commitMessage) => __awaiter(void 0, void 0, void 0, function* () {
     yield promisify_child_process_exec(`git add .`);
     const { stderr } = yield promisify_child_process_exec(`git commit -m "${commitMessage}"`);
@@ -6626,11 +6638,13 @@ const onReleaseCreated = (actionContext) => eventHandler_awaiter(void 0, void 0,
     lib_core.info(`revision:${sha}`);
     const releaseVersion = getVersionFromBranch(target_commitish, 'release');
     lib_core.info(`Release version:${releaseVersion}`);
-    yield gotoDirectory(workspace);
-    yield createBranch(releaseVersion);
-    yield configureSettings(releaseVersion, workspace, settingsPath, versionPrefix);
-    yield commit(`setup new version ${releaseVersion}`);
-    yield push();
+    if (tag_name.endsWith('.0.0') && !(yield doesBranchExist(releaseVersion))) {
+        yield gotoDirectory(workspace);
+        yield createBranch(releaseVersion);
+        yield configureSettings(releaseVersion, workspace, settingsPath, versionPrefix);
+        yield commit(`setup new version ${releaseVersion}`);
+        yield push();
+    }
 });
 
 ;// CONCATENATED MODULE: ./src/main.ts

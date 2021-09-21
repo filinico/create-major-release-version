@@ -24,6 +24,22 @@ export const createBranch = async (releaseVersion: string): Promise<void> => {
   }
 }
 
+export const doesBranchExist = async (
+  releaseVersion: string
+): Promise<boolean> => {
+  const {stderr, stdout} = await exec(
+    `git ls-remote origin release/${releaseVersion}`
+  )
+  if (stderr) {
+    core.error(stderr.toString())
+  }
+  if (stdout) {
+    return true
+  } else {
+    return false
+  }
+}
+
 export const commit = async (commitMessage: string): Promise<void> => {
   await exec(`git add .`)
   const {stderr} = await exec(`git commit -m "${commitMessage}"`)

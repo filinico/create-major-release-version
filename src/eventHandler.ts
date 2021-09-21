@@ -1,6 +1,12 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {commit, createBranch, gotoDirectory, push} from './gitUtils'
+import {
+  commit,
+  createBranch,
+  doesBranchExist,
+  gotoDirectory,
+  push
+} from './gitUtils'
 import {Context} from '@actions/github/lib/context'
 import {configureSettings} from './settings'
 import {getVersionFromBranch} from './version'
@@ -32,14 +38,16 @@ export const onReleaseCreated = async (
   const releaseVersion = getVersionFromBranch(target_commitish, 'release')
   core.info(`Release version:${releaseVersion}`)
 
-  await gotoDirectory(workspace)
-  await createBranch(releaseVersion)
-  await configureSettings(
-    releaseVersion,
-    workspace,
-    settingsPath,
-    versionPrefix
-  )
-  await commit(`setup new version ${releaseVersion}`)
-  await push()
+  if (tag_name.endsWith('.0.0') && !(await doesBranchExist(releaseVersion))) {
+    await gotoDirectory(workspace)
+    await createBranch(releaseVersion)
+    await configureSettings(
+      releaseVersion,
+      workspace,
+      settingsPath,
+      versionPrefix
+    )
+    await commit(`setup new version ${releaseVersion}`)
+    await push()
+  }
 }
