@@ -12,11 +12,12 @@ export const configureSettings = async (
   const filePath = path.resolve(workspace, settingsPath)
   const rawData = fs.readFileSync(filePath, 'utf8')
   const settings = JSON.parse(rawData)
+  core.info(`current settings:${settings}`)
   const currentReleaseSettings = settings.develop
   settings.release.push(currentReleaseSettings)
   const newDevelopSettings = settings.develop
   const versions = releaseVersion.split('.')
-  const majorVersion = versions[0]
+  const majorVersion = parseInt(versions[0]) + 1
   const nextArtifactVersion = `${versionPrefix}${majorVersion}`
   const nextDbVersion = `${versionPrefix}0.0${majorVersion}`
   core.info(`nextArtifactVersion:${nextArtifactVersion}`)

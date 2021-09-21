@@ -44,6 +44,14 @@ export const fetch = async (): Promise<void> => {
   }
 }
 
+export const addAuthor = async (
+  gitUserEmail: string,
+  gitUsername: string
+): Promise<void> => {
+  await exec(`git config user.email ${gitUserEmail}`)
+  await exec(`git config user.name ${gitUsername}`)
+}
+
 export const commit = async (commitMessage: string): Promise<void> => {
   await exec(`git add .`)
   const {stderr} = await exec(`git commit -m "${commitMessage}"`)

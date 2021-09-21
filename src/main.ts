@@ -8,6 +8,8 @@ async function run(): Promise<void> {
     const settingsPath = core.getInput('SETTINGS_FILE', {required: true})
     const versionPrefix = core.getInput('VERSION_PREFIX', {required: true})
     const tagPrefix = core.getInput('TAG_PREFIX', {required: true})
+    const gitEmail = core.getInput('GIT_USER_EMAIL', {required: true})
+    const gitUser = core.getInput('GIT_USER_NAME', {required: true})
 
     core.info(`GITHUB workspace=${process.env.GITHUB_WORKSPACE}`)
 
@@ -22,7 +24,9 @@ async function run(): Promise<void> {
       workspace: process.env.GITHUB_WORKSPACE,
       settingsPath,
       versionPrefix,
-      tagPrefix
+      tagPrefix,
+      gitUser,
+      gitEmail
     }
 
     core.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`)

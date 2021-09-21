@@ -6561,6 +6561,10 @@ const fetch = () => __awaiter(void 0, void 0, void 0, function* () {
         lib_core.error(stderr.toString());
     }
 });
+const addAuthor = (gitUserEmail, gitUsername) => __awaiter(void 0, void 0, void 0, function* () {
+    yield promisify_child_process_exec(`git config user.email ${gitUserEmail}`);
+    yield promisify_child_process_exec(`git config user.name ${gitUsername}`);
+});
 const commit = (commitMessage) => __awaiter(void 0, void 0, void 0, function* () {
     yield promisify_child_process_exec(`git add .`);
     const { stderr } = yield promisify_child_process_exec(`git commit -m "${commitMessage}"`);
@@ -6597,11 +6601,12 @@ const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefi
     const filePath = external_path_.resolve(workspace, settingsPath);
     const rawData = external_fs_.readFileSync(filePath, 'utf8');
     const settings = JSON.parse(rawData);
+    lib_core.info(`current settings:${settings}`);
     const currentReleaseSettings = settings.develop;
     settings.release.push(currentReleaseSettings);
     const newDevelopSettings = settings.develop;
     const versions = releaseVersion.split('.');
-    const majorVersion = versions[0];
+    const majorVersion = parseInt(versions[0]) + 1;
     const nextArtifactVersion = `${versionPrefix}${majorVersion}`;
     const nextDbVersion = `${versionPrefix}0.0${majorVersion}`;
     lib_core.info(`nextArtifactVersion:${nextArtifactVersion}`);
@@ -6636,7 +6641,7 @@ var eventHandler_awaiter = (undefined && undefined.__awaiter) || function (thisA
 
 
 const onReleaseCreated = (actionContext) => eventHandler_awaiter(void 0, void 0, void 0, function* () {
-    const { context, workspace, settingsPath, versionPrefix, tagPrefix } = actionContext;
+    const { context, workspace, settingsPath, versionPrefix, tagPrefix, gitEmail, gitUser } = actionContext;
     const { payload: { release: { tag_name, target_commitish, prerelease, id } }, sha } = context;
     lib_core.info(`tag_name:${tag_name}`);
     lib_core.info(`target_commitish:${target_commitish}`);
@@ -6653,9 +6658,12 @@ const onReleaseCreated = (actionContext) => eventHandler_awaiter(void 0, void 0,
     }
     yield gotoDirectory(workspace);
     if (!(yield doesBranchExist(releaseBranch))) {
+        yield addAuthor(gitEmail, gitUser);
+        lib_core.info(`Author identity added`);
         yield fetch();
+        lib_core.info(`fetch successful`);
         yield createBranch(releaseBranch, target_commitish);
-        lib_core.info(`Release branch checkout`);
+        lib_core.info(`Release branch created`);
         yield configureSettings(releaseVersion, workspace, settingsPath, versionPrefix);
         yield commit(`setup new version ${releaseVersion}`);
         lib_core.info(`changes committed`);
@@ -6687,6 +6695,8 @@ function run() {
             const settingsPath = lib_core.getInput('SETTINGS_FILE', { required: true });
             const versionPrefix = lib_core.getInput('VERSION_PREFIX', { required: true });
             const tagPrefix = lib_core.getInput('TAG_PREFIX', { required: true });
+            const gitEmail = lib_core.getInput('GIT_USER_EMAIL', { required: true });
+            const gitUser = lib_core.getInput('GIT_USER_NAME', { required: true });
             lib_core.info(`GITHUB workspace=${process.env.GITHUB_WORKSPACE}`);
             if (process.env.GITHUB_WORKSPACE === undefined) {
                 throw new Error('GITHUB_WORKSPACE not defined.');
@@ -6698,7 +6708,9 @@ function run() {
                 workspace: process.env.GITHUB_WORKSPACE,
                 settingsPath,
                 versionPrefix,
-                tagPrefix
+                tagPrefix,
+                gitUser,
+                gitEmail
             };
             lib_core.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`);
             lib_core.info(`GITHUB context action=${gitHubContext.context.payload.action}`);

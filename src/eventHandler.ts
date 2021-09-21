@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {
+  addAuthor,
   commit,
   createBranch,
   doesBranchExist,
@@ -20,13 +21,22 @@ export interface GitHubContext {
   settingsPath: string
   versionPrefix: string
   tagPrefix: string
+  gitEmail: string
+  gitUser: string
 }
 
 export const onReleaseCreated = async (
   actionContext: GitHubContext
 ): Promise<void> => {
-  const {context, workspace, settingsPath, versionPrefix, tagPrefix} =
-    actionContext
+  const {
+    context,
+    workspace,
+    settingsPath,
+    versionPrefix,
+    tagPrefix,
+    gitEmail,
+    gitUser
+  } = actionContext
   const {
     payload: {
       release: {tag_name, target_commitish, prerelease, id}
@@ -50,9 +60,12 @@ export const onReleaseCreated = async (
   }
   await gotoDirectory(workspace)
   if (!(await doesBranchExist(releaseBranch))) {
+    await addAuthor(gitEmail, gitUser)
+    core.info(`Author identity added`)
     await fetch()
+    core.info(`fetch successful`)
     await createBranch(releaseBranch, target_commitish)
-    core.info(`Release branch checkout`)
+    core.info(`Release branch created`)
     await configureSettings(
       releaseVersion,
       workspace,

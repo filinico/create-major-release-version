@@ -14,6 +14,12 @@ inputs:
   TAG_PREFIX:
     description: "prefix for the versioning"
     required: true
+  GIT_USER_EMAIL:
+    description: "git author email"
+    required: true
+  GIT_USER_NAME:
+    description: "git author name"
+    required: true
 runs:
   using: 'node12'
   main: 'dist/index.js'
