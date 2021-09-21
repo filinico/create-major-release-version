@@ -6139,11 +6139,211 @@ module.exports = eval("require")("encoding");
 
 /***/ }),
 
+/***/ 809:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+var __webpack_unused_export__;
+
+
+__webpack_unused_export__ = ({
+  value: true
+});
+__webpack_unused_export__ = promisifyChildProcess;
+exports.Cs = spawn;
+exports.rM = fork;
+exports.tL = exports.GL = void 0;
+
+const child_process = __nccwpck_require__(129);
+
+const bindFinally = promise => (handler // don't assume we're running in an environment with Promise.finally
+) => promise.then(async value => {
+  await handler();
+  return value;
+}, async reason => {
+  await handler();
+  throw reason;
+});
+
+function joinChunks(chunks, encoding) {
+  if (chunks[0] instanceof Buffer) {
+    const buffer = Buffer.concat(chunks);
+    if (encoding) return buffer.toString(encoding);
+    return buffer;
+  }
+
+  return chunks.join('');
+}
+
+function promisifyChildProcess(child, options = {}) {
+  const _promise = new Promise((resolve, reject) => {
+    const {
+      encoding,
+      killSignal
+    } = options;
+    const captureStdio = encoding != null || options.maxBuffer != null;
+    const maxBuffer = options.maxBuffer != null ? options.maxBuffer : 200 * 1024;
+    let error;
+    let bufferSize = 0;
+    const stdoutChunks = [];
+    const stderrChunks = [];
+
+    const capture = chunks => data => {
+      const remaining = Math.max(0, maxBuffer - bufferSize);
+      const byteLength = Buffer.byteLength(data, 'utf8');
+      bufferSize += Math.min(remaining, byteLength);
+
+      if (byteLength > remaining) {
+        error = new Error(`maxBuffer size exceeded`); // $FlowFixMe
+
+        child.kill(killSignal ? killSignal : 'SIGTERM');
+        data = data.slice(0, remaining);
+      }
+
+      chunks.push(data);
+    };
+
+    if (captureStdio) {
+      if (child.stdout) child.stdout.on('data', capture(stdoutChunks));
+      if (child.stderr) child.stderr.on('data', capture(stderrChunks));
+    }
+
+    child.on('error', reject);
+
+    function done(code, signal) {
+      if (!error) {
+        if (code != null && code !== 0) {
+          error = new Error(`Process exited with code ${code}`);
+        } else if (signal != null) {
+          error = new Error(`Process was killed with ${signal}`);
+        }
+      }
+
+      function defineOutputs(obj) {
+        obj.code = code;
+        obj.signal = signal;
+
+        if (captureStdio) {
+          obj.stdout = joinChunks(stdoutChunks, encoding);
+          obj.stderr = joinChunks(stderrChunks, encoding);
+        } else {
+          const warn = prop => ({
+            configurable: true,
+            enumerable: true,
+
+            get() {
+              /* eslint-disable no-console */
+              console.error(new Error(`To get ${prop} from a spawned or forked process, set the \`encoding\` or \`maxBuffer\` option`).stack.replace(/^Error/, 'Warning'));
+              /* eslint-enable no-console */
+
+              return null;
+            }
+
+          });
+
+          Object.defineProperties(obj, {
+            stdout: warn('stdout'),
+            stderr: warn('stderr')
+          });
+        }
+      }
+
+      const finalError = error;
+
+      if (finalError) {
+        defineOutputs(finalError);
+        reject(finalError);
+      } else {
+        const output = {};
+        defineOutputs(output);
+        resolve(output);
+      }
+    }
+
+    child.on('close', done);
+  });
+
+  return Object.create(child, {
+    then: {
+      value: _promise.then.bind(_promise)
+    },
+    catch: {
+      value: _promise.catch.bind(_promise)
+    },
+    finally: {
+      value: bindFinally(_promise)
+    }
+  });
+}
+
+function spawn(command, args, options) {
+  return promisifyChildProcess(child_process.spawn(command, args, options), Array.isArray(args) ? options : args);
+}
+
+function fork(module, args, options) {
+  return promisifyChildProcess(child_process.fork(module, args, options), Array.isArray(args) ? options : args);
+}
+
+function promisifyExecMethod(method) {
+  return (...args) => {
+    let child;
+
+    const _promise = new Promise((resolve, reject) => {
+      child = method(...args, (err, stdout, stderr) => {
+        if (err) {
+          err.stdout = stdout;
+          err.stderr = stderr;
+          reject(err);
+        } else {
+          resolve({
+            code: 0,
+            signal: null,
+            stdout,
+            stderr
+          });
+        }
+      });
+    });
+
+    if (!child) {
+      throw new Error('unexpected error: child has not been initialized');
+    }
+
+    return Object.create(child, {
+      then: {
+        value: _promise.then.bind(_promise)
+      },
+      catch: {
+        value: _promise.catch.bind(_promise)
+      },
+      finally: {
+        value: bindFinally(_promise)
+      }
+    });
+  };
+}
+
+const exec = promisifyExecMethod(child_process.exec);
+exports.GL = exec;
+const execFile = promisifyExecMethod(child_process.execFile);
+exports.tL = execFile;
+
+
+/***/ }),
+
 /***/ 357:
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("assert");
+
+/***/ }),
+
+/***/ 129:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("child_process");
 
 /***/ }),
 
@@ -6276,35 +6476,6 @@ module.exports = require("zlib");
 /******/ 	}
 /******/ 	
 /************************************************************************/
-/******/ 	/* webpack/runtime/compat get default export */
-/******/ 	(() => {
-/******/ 		// getDefaultExport function for compatibility with non-harmony modules
-/******/ 		__nccwpck_require__.n = (module) => {
-/******/ 			var getter = module && module.__esModule ?
-/******/ 				() => (module['default']) :
-/******/ 				() => (module);
-/******/ 			__nccwpck_require__.d(getter, { a: getter });
-/******/ 			return getter;
-/******/ 		};
-/******/ 	})();
-/******/ 	
-/******/ 	/* webpack/runtime/define property getters */
-/******/ 	(() => {
-/******/ 		// define getter functions for harmony exports
-/******/ 		__nccwpck_require__.d = (exports, definition) => {
-/******/ 			for(var key in definition) {
-/******/ 				if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
-/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
-/******/ 				}
-/******/ 			}
-/******/ 		};
-/******/ 	})();
-/******/ 	
-/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
-/******/ 	(() => {
-/******/ 		__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
-/******/ 	})();
-/******/ 	
 /******/ 	/* webpack/runtime/make namespace object */
 /******/ 	(() => {
 /******/ 		// define __esModule on exports
@@ -6325,11 +6496,24 @@ var __webpack_exports__ = {};
 // This entry need to be wrapped in an IIFE because it need to be in strict mode.
 (() => {
 "use strict";
+// ESM COMPAT FLAG
 __nccwpck_require__.r(__webpack_exports__);
-/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(186);
-/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(_actions_core__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(438);
-/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__nccwpck_require__.n(_actions_github__WEBPACK_IMPORTED_MODULE_1__);
+
+// EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
+var lib_core = __nccwpck_require__(186);
+// EXTERNAL MODULE: ./node_modules/@actions/github/lib/github.js
+var github = __nccwpck_require__(438);
+// EXTERNAL MODULE: ./node_modules/promisify-child-process/index.cjs
+var promisify_child_process = __nccwpck_require__(809);
+;// CONCATENATED MODULE: ./node_modules/promisify-child-process/index.mjs
+
+const promisify_child_process_exec = promisify_child_process/* exec */.GL
+const execFile = promisify_child_process/* execFile */.tL
+const spawn = promisify_child_process/* spawn */.Cs
+const fork = promisify_child_process/* fork */.rM
+/* harmony default export */ const node_modules_promisify_child_process = ((/* unused pure expression or super */ null && (cjsModule)));
+
+;// CONCATENATED MODULE: ./src/gitUtils.ts
 var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -6341,22 +6525,158 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 };
 
 
+const gotoDirectory = (directoryPath) => __awaiter(void 0, void 0, void 0, function* () {
+    const { stderr } = yield promisify_child_process_exec(`cd ${directoryPath}`);
+    if (stderr) {
+        lib_core.error(stderr.toString());
+    }
+});
+const createDirectory = (directoryName) => __awaiter(void 0, void 0, void 0, function* () {
+    const { stderr } = yield exec(`mkdir ${directoryName}`);
+    if (stderr) {
+        core.error(stderr.toString());
+    }
+});
+const createBranch = (releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
+    const { stderr } = yield promisify_child_process_exec(`git checkout -b release/${releaseVersion} develop`);
+    if (stderr) {
+        lib_core.error(stderr.toString());
+    }
+});
+const commit = (commitMessage) => __awaiter(void 0, void 0, void 0, function* () {
+    yield promisify_child_process_exec(`git add .`);
+    const { stderr } = yield promisify_child_process_exec(`git commit -m "${commitMessage}"`);
+    if (stderr) {
+        lib_core.error(stderr.toString());
+    }
+});
+const push = () => __awaiter(void 0, void 0, void 0, function* () {
+    const { stderr } = yield promisify_child_process_exec(`git push`);
+    if (stderr) {
+        lib_core.error(stderr.toString());
+    }
+});
+
+// EXTERNAL MODULE: external "fs"
+var external_fs_ = __nccwpck_require__(747);
+// EXTERNAL MODULE: external "path"
+var external_path_ = __nccwpck_require__(622);
+;// CONCATENATED MODULE: ./src/settings.ts
+var settings_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefix) => settings_awaiter(void 0, void 0, void 0, function* () {
+    const filePath = external_path_.resolve(workspace, settingsPath);
+    const rawData = external_fs_.readFileSync(filePath, 'utf8');
+    const settings = JSON.parse(rawData);
+    const currentReleaseSettings = settings.develop;
+    settings.release.push(currentReleaseSettings);
+    const newDevelopSettings = settings.develop;
+    const versions = releaseVersion.split('.');
+    const majorVersion = versions[0];
+    const nextArtifactVersion = `${versionPrefix}${majorVersion}`;
+    const nextDbVersion = `${versionPrefix}0.0${majorVersion}`;
+    newDevelopSettings.artifact.version = nextArtifactVersion;
+    newDevelopSettings.database.version = nextDbVersion;
+    const strSettings = JSON.stringify(settings);
+    lib_core.info(`new settings:${strSettings}`);
+    external_fs_.writeFileSync(filePath, strSettings);
+});
+
+;// CONCATENATED MODULE: ./src/version.ts
+const getVersionFromBranch = (branchName, branchType) => {
+    if (branchName.includes(branchType)) {
+        const sourceBranchSuffixArray = branchName.split('/');
+        if (sourceBranchSuffixArray.length > 1)
+            return sourceBranchSuffixArray[sourceBranchSuffixArray.length - 1];
+    }
+    return branchName;
+};
+
+;// CONCATENATED MODULE: ./src/eventHandler.ts
+var eventHandler_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+
+const onReleaseCreated = (actionContext) => eventHandler_awaiter(void 0, void 0, void 0, function* () {
+    const { context, workspace, settingsPath, versionPrefix } = actionContext;
+    const { payload: { release: { tag_name, target_commitish, prerelease, id } }, sha } = context;
+    lib_core.info(`tag_name:${tag_name}`);
+    lib_core.info(`target_commitish:${target_commitish}`);
+    lib_core.info(`prerelease:${prerelease}`);
+    lib_core.info(`id:${id}`);
+    lib_core.info(`revision:${sha}`);
+    const releaseVersion = getVersionFromBranch(target_commitish, 'release');
+    lib_core.info(`Release version:${releaseVersion}`);
+    yield gotoDirectory(workspace);
+    yield createBranch(releaseVersion);
+    yield configureSettings(releaseVersion, workspace, settingsPath, versionPrefix);
+    yield commit(`setup new version ${releaseVersion}`);
+    yield push();
+});
+
+;// CONCATENATED MODULE: ./src/main.ts
+var main_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
 function run() {
-    return __awaiter(this, void 0, void 0, function* () {
+    return main_awaiter(this, void 0, void 0, function* () {
         try {
-            const githubToken = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput('GITHUB_TOKEN', { required: true });
-            const octokit = _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit(githubToken);
+            const githubToken = lib_core.getInput('GITHUB_TOKEN', { required: true });
+            const settingsPath = lib_core.getInput('SETTINGS_FILE', { required: true });
+            const versionPrefix = lib_core.getInput('VERSION_PREFIX', { required: true });
+            lib_core.info(`GITHUB workspace=${process.env.GITHUB_WORKSPACE}`);
+            if (process.env.GITHUB_WORKSPACE === undefined) {
+                throw new Error('GITHUB_WORKSPACE not defined.');
+            }
+            const octokit = github.getOctokit(githubToken);
             const gitHubContext = {
                 octokit,
-                context: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context
+                context: github.context,
+                workspace: process.env.GITHUB_WORKSPACE,
+                settingsPath,
+                versionPrefix
             };
-            _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`);
-            _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`GITHUB context action=${gitHubContext.context.payload.action}`);
+            lib_core.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`);
+            lib_core.info(`GITHUB context action=${gitHubContext.context.payload.action}`);
+            if (process.env.GITHUB_EVENT_NAME === 'release' &&
+                github.context.payload.action === 'created') {
+                lib_core.info(`start onReleasePublished`);
+                yield onReleaseCreated(gitHubContext);
+                lib_core.info(`releasePublished finished`);
+            }
         }
         catch (error) {
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
-            _actions_core__WEBPACK_IMPORTED_MODULE_0__.setFailed(error.message);
+            lib_core.setFailed(error.message);
         }
     });
 }

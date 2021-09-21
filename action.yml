@@ -5,6 +5,12 @@ inputs:
   GITHUB_TOKEN:
     description: "User token of service account."
     required: true
+  SETTINGS_FILE:
+    description: "Path of the settings file."
+    required: true
+  VERSION_PREFIX:
+    description: "Prefix of the version."
+    required: true
 runs:
   using: 'node12'
   main: 'dist/index.js'
