@@ -41,9 +41,14 @@ export const onReleaseCreated = async (
   core.info(`Release version:${releaseVersion}`)
   const releaseBranch = `release/${releaseVersion}`
   core.info(`Release branch:${releaseBranch}`)
-
-  if (tag_name.endsWith('.0.0') && !(await doesBranchExist(releaseBranch))) {
-    await gotoDirectory(workspace)
+  if (!tag_name.endsWith('.0.0')) {
+    core.error(
+      `Release branch ${releaseBranch} is not a major version ending with .0.0`
+    )
+    return
+  }
+  await gotoDirectory(workspace)
+  if (!(await doesBranchExist(releaseBranch))) {
     await createBranch(releaseBranch, target_commitish)
     core.info(`Release branch checkout`)
     await configureSettings(
@@ -57,8 +62,6 @@ export const onReleaseCreated = async (
     await push()
     core.info(`changes pushed`)
   } else {
-    core.error(
-      `Release branch ${releaseBranch} already exists or isn't a major version ending with .0.0`
-    )
+    core.error(`Release branch ${releaseBranch} already exists`)
   }
 }

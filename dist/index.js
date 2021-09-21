@@ -6641,8 +6641,12 @@ const onReleaseCreated = (actionContext) => eventHandler_awaiter(void 0, void 0,
     lib_core.info(`Release version:${releaseVersion}`);
     const releaseBranch = `release/${releaseVersion}`;
     lib_core.info(`Release branch:${releaseBranch}`);
-    if (tag_name.endsWith('.0.0') && !(yield doesBranchExist(releaseBranch))) {
-        yield gotoDirectory(workspace);
+    if (!tag_name.endsWith('.0.0')) {
+        lib_core.error(`Release branch ${releaseBranch} is not a major version ending with .0.0`);
+        return;
+    }
+    yield gotoDirectory(workspace);
+    if (!(yield doesBranchExist(releaseBranch))) {
         yield createBranch(releaseBranch, target_commitish);
         lib_core.info(`Release branch checkout`);
         yield configureSettings(releaseVersion, workspace, settingsPath, versionPrefix);
@@ -6652,7 +6656,7 @@ const onReleaseCreated = (actionContext) => eventHandler_awaiter(void 0, void 0,
         lib_core.info(`changes pushed`);
     }
     else {
-        lib_core.error(`Release branch ${releaseBranch} already exists or isn't a major version ending with .0.0`);
+        lib_core.error(`Release branch ${releaseBranch} already exists`);
     }
 });
 
