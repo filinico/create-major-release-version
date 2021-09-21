@@ -6555,6 +6555,12 @@ const doesBranchExist = (branchName) => __awaiter(void 0, void 0, void 0, functi
         return false;
     }
 });
+const fetch = () => __awaiter(void 0, void 0, void 0, function* () {
+    const { stderr } = yield promisify_child_process_exec(`git fetch --all`);
+    if (stderr) {
+        lib_core.error(stderr.toString());
+    }
+});
 const commit = (commitMessage) => __awaiter(void 0, void 0, void 0, function* () {
     yield promisify_child_process_exec(`git add .`);
     const { stderr } = yield promisify_child_process_exec(`git commit -m "${commitMessage}"`);
@@ -6647,6 +6653,7 @@ const onReleaseCreated = (actionContext) => eventHandler_awaiter(void 0, void 0,
     }
     yield gotoDirectory(workspace);
     if (!(yield doesBranchExist(releaseBranch))) {
+        yield fetch();
         yield createBranch(releaseBranch, target_commitish);
         lib_core.info(`Release branch checkout`);
         yield configureSettings(releaseVersion, workspace, settingsPath, versionPrefix);

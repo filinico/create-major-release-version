@@ -37,6 +37,13 @@ export const doesBranchExist = async (branchName: string): Promise<boolean> => {
   }
 }
 
+export const fetch = async (): Promise<void> => {
+  const {stderr} = await exec(`git fetch --all`)
+  if (stderr) {
+    core.error(stderr.toString())
+  }
+}
+
 export const commit = async (commitMessage: string): Promise<void> => {
   await exec(`git add .`)
   const {stderr} = await exec(`git commit -m "${commitMessage}"`)

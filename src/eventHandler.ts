@@ -4,6 +4,7 @@ import {
   commit,
   createBranch,
   doesBranchExist,
+  fetch,
   gotoDirectory,
   push
 } from './gitUtils'
@@ -49,6 +50,7 @@ export const onReleaseCreated = async (
   }
   await gotoDirectory(workspace)
   if (!(await doesBranchExist(releaseBranch))) {
+    await fetch()
     await createBranch(releaseBranch, target_commitish)
     core.info(`Release branch checkout`)
     await configureSettings(
