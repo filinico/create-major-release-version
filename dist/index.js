@@ -6720,9 +6720,9 @@ function run() {
             lib_core.info(`GITHUB context action=${gitHubContext.context.payload.action}`);
             if (process.env.GITHUB_EVENT_NAME === 'release' &&
                 github.context.payload.action === 'created') {
-                lib_core.info(`start onReleasePublished`);
+                lib_core.info(`start onReleaseCreated`);
                 yield onReleaseCreated(gitHubContext);
-                lib_core.info(`releasePublished finished`);
+                lib_core.info(`onReleaseCreated finished`);
             }
         }
         catch (error) {

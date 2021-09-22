@@ -35,9 +35,9 @@ async function run(): Promise<void> {
       process.env.GITHUB_EVENT_NAME === 'release' &&
       github.context.payload.action === 'created'
     ) {
-      core.info(`start onReleasePublished`)
+      core.info(`start onReleaseCreated`)
       await onReleaseCreated(gitHubContext)
-      core.info(`releasePublished finished`)
+      core.info(`onReleaseCreated finished`)
     }
   } catch (error) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
