@@ -13,20 +13,30 @@ export const configureSettings = async (
   const rawData = fs.readFileSync(filePath, 'utf8')
   const settings = JSON.parse(rawData)
   core.info(`current settings:${rawData}`)
+  const versions = releaseVersion.split('.')
+  const majorVersion = versions[0]
   const currentReleaseSettings = {
-    ...settings.develop
+    artifact: {
+      ...settings.develop.artifact,
+      source: settings.develop.artifact.source.replace(
+        'develop',
+        `release_${majorVersion}.0`
+      )
+    },
+    database: {
+      ...settings.develop.database
+    }
   }
   settings.release.push(currentReleaseSettings)
   const newDevelopSettings = settings.develop
-  const versions = releaseVersion.split('.')
-  const majorVersion = parseInt(versions[0]) + 1
-  const nextArtifactVersion = `${versionPrefix}${majorVersion}`
-  const nextDbVersion = `${versionPrefix}0.0${majorVersion}`
+  const nextMajorVersion = parseInt(majorVersion) + 1
+  const nextArtifactVersion = `${versionPrefix}${nextMajorVersion}.0`
+  const nextDbVersion = `${versionPrefix}0.0${nextMajorVersion}`
   core.info(`nextArtifactVersion:${nextArtifactVersion}`)
   core.info(`nextDbVersion:${nextDbVersion}`)
   newDevelopSettings.artifact.version = nextArtifactVersion
   newDevelopSettings.database.version = nextDbVersion
-  const strSettings = JSON.stringify(settings)
+  const strSettings = JSON.stringify(settings, null, '\t')
   core.info(`new settings:${strSettings}`)
   fs.writeFileSync(filePath, strSettings)
   core.info('settings changed')

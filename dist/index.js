@@ -6602,18 +6602,22 @@ const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefi
     const rawData = external_fs_.readFileSync(filePath, 'utf8');
     const settings = JSON.parse(rawData);
     lib_core.info(`current settings:${rawData}`);
-    const currentReleaseSettings = Object.assign({}, settings.develop);
+    const versions = releaseVersion.split('.');
+    const majorVersion = versions[0];
+    const currentReleaseSettings = {
+        artifact: Object.assign(Object.assign({}, settings.develop.artifact), { source: settings.develop.artifact.source.replace('develop', `release_${majorVersion}.0`) }),
+        database: Object.assign({}, settings.develop.database)
+    };
     settings.release.push(currentReleaseSettings);
     const newDevelopSettings = settings.develop;
-    const versions = releaseVersion.split('.');
-    const majorVersion = parseInt(versions[0]) + 1;
-    const nextArtifactVersion = `${versionPrefix}${majorVersion}`;
-    const nextDbVersion = `${versionPrefix}0.0${majorVersion}`;
+    const nextMajorVersion = parseInt(majorVersion) + 1;
+    const nextArtifactVersion = `${versionPrefix}${nextMajorVersion}.0`;
+    const nextDbVersion = `${versionPrefix}0.0${nextMajorVersion}`;
     lib_core.info(`nextArtifactVersion:${nextArtifactVersion}`);
     lib_core.info(`nextDbVersion:${nextDbVersion}`);
     newDevelopSettings.artifact.version = nextArtifactVersion;
     newDevelopSettings.database.version = nextDbVersion;
-    const strSettings = JSON.stringify(settings);
+    const strSettings = JSON.stringify(settings, null, '\t');
     lib_core.info(`new settings:${strSettings}`);
     external_fs_.writeFileSync(filePath, strSettings);
     lib_core.info('settings changed');

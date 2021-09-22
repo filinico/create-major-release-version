@@ -1,0 +1,22 @@
+{
+  "release":[
+    {
+      "artifact": {
+        "version": "v1.0",
+        "source": "myArtifact/release_1.0/artifact.zip"
+      },
+      "database": {
+        "version": "v0.01"
+      }
+    }
+  ],
+  "develop": {
+    "artifact": {
+      "version": "v2.0",
+      "source": "myArtifact/develop/artifact.zip"
+    },
+    "database": {
+      "version": "v0.02"
+    }
+  }
+}
