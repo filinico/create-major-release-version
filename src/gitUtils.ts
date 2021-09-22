@@ -61,7 +61,7 @@ export const commit = async (commitMessage: string): Promise<void> => {
 }
 
 export const push = async (): Promise<void> => {
-  const {stderr} = await exec(`git push`)
+  const {stderr} = await exec(`git push -u origin HEAD`)
   if (stderr) {
     core.error(stderr.toString())
   }

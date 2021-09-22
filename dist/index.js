@@ -6573,7 +6573,7 @@ const commit = (commitMessage) => __awaiter(void 0, void 0, void 0, function* ()
     }
 });
 const push = () => __awaiter(void 0, void 0, void 0, function* () {
-    const { stderr } = yield promisify_child_process_exec(`git push`);
+    const { stderr } = yield promisify_child_process_exec(`git push -u origin HEAD`);
     if (stderr) {
         lib_core.error(stderr.toString());
     }
