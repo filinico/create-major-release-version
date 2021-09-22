@@ -29,7 +29,7 @@
     "promisify-child-process": "^4.1.1"
   },
   "devDependencies": {
-    "@types/jest": "^26.0.15",
+    "@types/jest": "^27.0.2",
     "@types/node": "^16.9.4",
     "@typescript-eslint/parser": "^4.28.3",
     "@vercel/ncc": "^0.29.0",
