@@ -12,8 +12,10 @@ export const configureSettings = async (
   const filePath = path.resolve(workspace, settingsPath)
   const rawData = fs.readFileSync(filePath, 'utf8')
   const settings = JSON.parse(rawData)
-  core.info(`current settings:${settings}`)
-  const currentReleaseSettings = settings.develop
+  core.info(`current settings:${rawData}`)
+  const currentReleaseSettings = {
+    ...settings.develop
+  }
   settings.release.push(currentReleaseSettings)
   const newDevelopSettings = settings.develop
   const versions = releaseVersion.split('.')

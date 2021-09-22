@@ -6601,8 +6601,8 @@ const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefi
     const filePath = external_path_.resolve(workspace, settingsPath);
     const rawData = external_fs_.readFileSync(filePath, 'utf8');
     const settings = JSON.parse(rawData);
-    lib_core.info(`current settings:${settings}`);
-    const currentReleaseSettings = settings.develop;
+    lib_core.info(`current settings:${rawData}`);
+    const currentReleaseSettings = Object.assign({}, settings.develop);
     settings.release.push(currentReleaseSettings);
     const newDevelopSettings = settings.develop;
     const versions = releaseVersion.split('.');
