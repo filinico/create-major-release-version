@@ -30,7 +30,7 @@ export const configureSettings = async (
   settings.release.push(currentReleaseSettings)
   const newDevelopSettings = settings.develop
   const nextMajorVersion = parseInt(majorVersion) + 1
-  const nextArtifactVersion = `${versionPrefix}${nextMajorVersion}.0`
+  const nextArtifactVersion = `${versionPrefix}${nextMajorVersion}0`
   const nextDbVersion = `${versionPrefix}0.0${nextMajorVersion}`
   core.info(`nextArtifactVersion:${nextArtifactVersion}`)
   core.info(`nextDbVersion:${nextDbVersion}`)

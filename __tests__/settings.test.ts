@@ -12,17 +12,17 @@ beforeEach(() => {
 })
 
 test('setup settings for next version', async () => {
-  await configureSettings('2.0', './__tests__/testData', 'config.json', 'v')
+  await configureSettings('11.0', './__tests__/testData', 'config.json', 'v.')
   const configTemplatePath = path.resolve('./__tests__/testData/config.json')
   const rawData = fs.readFileSync(configTemplatePath, 'utf8')
   const settings = JSON.parse(rawData)
   const releaseSettings = settings.release[settings.release.length - 1]
-  expect(releaseSettings.artifact.version).toEqual('v2.0')
+  expect(releaseSettings.artifact.version).toEqual('v.110')
   expect(releaseSettings.artifact.source).toEqual(
-    'myArtifact/release_2.0/artifact.zip'
+    'myArtifact/release_11.0/artifact.zip'
   )
-  expect(releaseSettings.database.version).toEqual('v0.02')
+  expect(releaseSettings.database.version).toEqual('v.0.011')
   const developSettings = settings.develop
-  expect(developSettings.artifact.version).toEqual('v3.0')
-  expect(developSettings.database.version).toEqual('v0.03')
+  expect(developSettings.artifact.version).toEqual('v.120')
+  expect(developSettings.database.version).toEqual('v.0.012')
 })

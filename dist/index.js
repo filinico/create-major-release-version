@@ -6611,7 +6611,7 @@ const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefi
     settings.release.push(currentReleaseSettings);
     const newDevelopSettings = settings.develop;
     const nextMajorVersion = parseInt(majorVersion) + 1;
-    const nextArtifactVersion = `${versionPrefix}${nextMajorVersion}.0`;
+    const nextArtifactVersion = `${versionPrefix}${nextMajorVersion}0`;
     const nextDbVersion = `${versionPrefix}0.0${nextMajorVersion}`;
     lib_core.info(`nextArtifactVersion:${nextArtifactVersion}`);
     lib_core.info(`nextDbVersion:${nextDbVersion}`);
