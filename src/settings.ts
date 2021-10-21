@@ -2,12 +2,12 @@ import * as core from '@actions/core'
 import * as fs from 'fs'
 import * as path from 'path'
 
-export const configureSettings = async (
+export const configureSettings = (
   releaseVersion: string,
   workspace: string,
   settingsPath: string,
   versionPrefix: string
-): Promise<void> => {
+): void => {
   core.info(`settingsPath:${settingsPath}`)
   const filePath = path.resolve(workspace, settingsPath)
   const rawData = fs.readFileSync(filePath, 'utf8')
