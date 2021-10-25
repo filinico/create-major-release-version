@@ -134,12 +134,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getState = exports.saveState = exports.group = exports.endGroup = exports.startGroup = exports.info = exports.notice = exports.warning = exports.error = exports.debug = exports.isDebug = exports.setFailed = exports.setCommandEcho = exports.setOutput = exports.getBooleanInput = exports.getMultilineInput = exports.getInput = exports.addPath = exports.setSecret = exports.exportVariable = exports.ExitCode = void 0;
+exports.getIDToken = exports.getState = exports.saveState = exports.group = exports.endGroup = exports.startGroup = exports.info = exports.notice = exports.warning = exports.error = exports.debug = exports.isDebug = exports.setFailed = exports.setCommandEcho = exports.setOutput = exports.getBooleanInput = exports.getMultilineInput = exports.getInput = exports.addPath = exports.setSecret = exports.exportVariable = exports.ExitCode = void 0;
 const command_1 = __nccwpck_require__(7351);
 const file_command_1 = __nccwpck_require__(717);
 const utils_1 = __nccwpck_require__(5278);
 const os = __importStar(__nccwpck_require__(2087));
 const path = __importStar(__nccwpck_require__(5622));
+const oidc_utils_1 = __nccwpck_require__(8041);
 /**
  * The code to exit an action
  */
@@ -408,6 +409,12 @@ function getState(name) {
     return process.env[`STATE_${name}`] || '';
 }
 exports.getState = getState;
+function getIDToken(aud) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield oidc_utils_1.OidcClient.getIDToken(aud);
+    });
+}
+exports.getIDToken = getIDToken;
 //# sourceMappingURL=core.js.map
 
 /***/ }),
@@ -461,6 +468,90 @@ exports.issueCommand = issueCommand;
 
 /***/ }),
 
+/***/ 8041:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OidcClient = void 0;
+const http_client_1 = __nccwpck_require__(9925);
+const auth_1 = __nccwpck_require__(3702);
+const core_1 = __nccwpck_require__(2186);
+class OidcClient {
+    static createHttpClient(allowRetry = true, maxRetry = 10) {
+        const requestOptions = {
+            allowRetries: allowRetry,
+            maxRetries: maxRetry
+        };
+        return new http_client_1.HttpClient('actions/oidc-client', [new auth_1.BearerCredentialHandler(OidcClient.getRequestToken())], requestOptions);
+    }
+    static getRequestToken() {
+        const token = process.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'];
+        if (!token) {
+            throw new Error('Unable to get ACTIONS_ID_TOKEN_REQUEST_TOKEN env variable');
+        }
+        return token;
+    }
+    static getIDTokenUrl() {
+        const runtimeUrl = process.env['ACTIONS_ID_TOKEN_REQUEST_URL'];
+        if (!runtimeUrl) {
+            throw new Error('Unable to get ACTIONS_ID_TOKEN_REQUEST_URL env variable');
+        }
+        return runtimeUrl;
+    }
+    static getCall(id_token_url) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function* () {
+            const httpclient = OidcClient.createHttpClient();
+            const res = yield httpclient
+                .getJson(id_token_url)
+                .catch(error => {
+                throw new Error(`Failed to get ID Token. \n 
+        Error Code : ${error.statusCode}\n 
+        Error Message: ${error.result.message}`);
+            });
+            const id_token = (_a = res.result) === null || _a === void 0 ? void 0 : _a.value;
+            if (!id_token) {
+                throw new Error('Response json body do not have ID Token field');
+            }
+            return id_token;
+        });
+    }
+    static getIDToken(audience) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                // New ID Token is requested from action service
+                let id_token_url = OidcClient.getIDTokenUrl();
+                if (audience) {
+                    const encodedAudience = encodeURIComponent(audience);
+                    id_token_url = `${id_token_url}&audience=${encodedAudience}`;
+                }
+                core_1.debug(`ID token url is ${id_token_url}`);
+                const id_token = yield OidcClient.getCall(id_token_url);
+                core_1.setSecret(id_token);
+                return id_token;
+            }
+            catch (error) {
+                throw new Error(`Error message: ${error.message}`);
+            }
+        });
+    }
+}
+exports.OidcClient = OidcClient;
+//# sourceMappingURL=oidc-utils.js.map
+
+/***/ }),
+
 /***/ 5278:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -496,6 +587,7 @@ function toCommandProperties(annotationProperties) {
     }
     return {
         title: annotationProperties.title,
+        file: annotationProperties.file,
         line: annotationProperties.startLine,
         endLine: annotationProperties.endLine,
         col: annotationProperties.startColumn,
@@ -719,6 +811,72 @@ function getOctokitOptions(token, options) {
 }
 exports.getOctokitOptions = getOctokitOptions;
 //# sourceMappingURL=utils.js.map
+
+/***/ }),
+
+/***/ 3702:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+class BasicCredentialHandler {
+    constructor(username, password) {
+        this.username = username;
+        this.password = password;
+    }
+    prepareRequest(options) {
+        options.headers['Authorization'] =
+            'Basic ' +
+                Buffer.from(this.username + ':' + this.password).toString('base64');
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication(response) {
+        return false;
+    }
+    handleAuthentication(httpClient, requestInfo, objs) {
+        return null;
+    }
+}
+exports.BasicCredentialHandler = BasicCredentialHandler;
+class BearerCredentialHandler {
+    constructor(token) {
+        this.token = token;
+    }
+    // currently implements pre-authorization
+    // TODO: support preAuth = false where it hooks on 401
+    prepareRequest(options) {
+        options.headers['Authorization'] = 'Bearer ' + this.token;
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication(response) {
+        return false;
+    }
+    handleAuthentication(httpClient, requestInfo, objs) {
+        return null;
+    }
+}
+exports.BearerCredentialHandler = BearerCredentialHandler;
+class PersonalAccessTokenCredentialHandler {
+    constructor(token) {
+        this.token = token;
+    }
+    // currently implements pre-authorization
+    // TODO: support preAuth = false where it hooks on 401
+    prepareRequest(options) {
+        options.headers['Authorization'] =
+            'Basic ' + Buffer.from('PAT:' + this.token).toString('base64');
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication(response) {
+        return false;
+    }
+    handleAuthentication(httpClient, requestInfo, objs) {
+        return null;
+    }
+}
+exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHandler;
+
 
 /***/ }),
 
@@ -12261,11 +12419,11 @@ exports.onReleaseCreated = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const gitUtils_1 = __nccwpck_require__(4755);
 const workflows_1 = __nccwpck_require__(4949);
+const version_1 = __nccwpck_require__(1946);
 const gitHubApi_1 = __nccwpck_require__(3562);
 const settings_1 = __nccwpck_require__(1685);
-const version_1 = __nccwpck_require__(1946);
 const onReleaseCreated = (actionContext) => __awaiter(void 0, void 0, void 0, function* () {
-    const { context, workspace, tagPrefix, gitEmail, gitUser } = actionContext;
+    const { context, workspace, tagPrefix, gitEmail, gitUser, settingsPath } = actionContext;
     const { payload: { release: { tag_name, target_commitish, prerelease, id } }, sha } = context;
     core.info(`tag_name:${tag_name}`);
     core.info(`target_commitish:${target_commitish}`);
@@ -12276,30 +12434,42 @@ const onReleaseCreated = (actionContext) => __awaiter(void 0, void 0, void 0, fu
     core.info(`Release version:${releaseVersion}`);
     const releaseBranch = `release/${releaseVersion}`;
     core.info(`Release branch:${releaseBranch}`);
+    const previousVersion = (0, version_1.getPreviousVersion)(releaseVersion);
+    core.info(`Previous version:${previousVersion}`);
+    const previousReleaseBranch = `release/${previousVersion}`;
+    core.info(`Previous release branch:${previousReleaseBranch}`);
     if (!tag_name.endsWith('.0.0')) {
         core.error(`Release branch ${releaseBranch} is not a major version ending with .0.0`);
         return;
     }
     yield (0, gitUtils_1.gotoDirectory)(workspace);
-    if (!(yield (0, gitUtils_1.doesBranchExist)(releaseBranch))) {
-        yield (0, gitUtils_1.addAuthor)(gitEmail, gitUser);
-        core.info(`Author identity added`);
-        yield (0, gitUtils_1.fetch)();
-        core.info(`fetch successful`);
-        yield createNewMajorVersion(actionContext, releaseVersion, releaseBranch);
-        yield configurePreviousVersion(actionContext, releaseVersion);
+    const releaseBranchExists = yield (0, gitUtils_1.doesBranchExist)(releaseBranch);
+    const conflictsExists = yield (0, gitUtils_1.diff)(previousReleaseBranch, 'develop', settingsPath);
+    if (releaseBranchExists || conflictsExists) {
+        core.error(`Cannot proceed with the creation of the release branch ${releaseBranch}:`);
+        if (releaseBranchExists) {
+            core.error(`Release branch ${releaseBranch} already exists`);
+        }
+        if (conflictsExists) {
+            core.error(`There are conflicts between the release branch ${releaseBranch} and develop. Please resolve the conflicts and create a new GitHub release.`);
+        }
+        return;
     }
-    else {
-        core.error(`Release branch ${releaseBranch} already exists`);
-    }
+    yield (0, gitUtils_1.addAuthor)(gitEmail, gitUser);
+    core.info(`Author identity added`);
+    yield configurePreviousVersion(actionContext, releaseVersion, previousVersion, previousReleaseBranch);
+    yield createNewMajorVersion(actionContext, releaseVersion, releaseBranch, previousVersion, previousReleaseBranch);
 });
 exports.onReleaseCreated = onReleaseCreated;
-const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch) => __awaiter(void 0, void 0, void 0, function* () {
+const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch, previousVersion, previousReleaseBranch) => __awaiter(void 0, void 0, void 0, function* () {
     const { context, workspace, settingsPath, versionPrefix, workflowPath } = actionContext;
     const { payload: { release: { target_commitish } } } = context;
     core.info(`Start creation of new major version`);
+    yield (0, gitUtils_1.fetch)();
+    core.info(`fetch successful`);
     yield (0, gitUtils_1.createBranch)(releaseBranch, target_commitish);
     core.info(`Release branch created`);
+    yield (0, gitUtils_1.mergeIntoCurrent)(previousReleaseBranch, releaseBranch);
     (0, settings_1.configureSettings)(releaseVersion, workspace, settingsPath, versionPrefix);
     (0, workflows_1.configureWorkflow)(releaseVersion, workspace, workflowPath);
     yield (0, gitUtils_1.commit)(`setup new version ${releaseVersion}`);
@@ -12308,13 +12478,11 @@ const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch) => 
     core.info(`changes pushed`);
     core.info(`New major version created`);
 });
-const configurePreviousVersion = (actionContext, releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
+const configurePreviousVersion = (actionContext, releaseVersion, previousVersion, previousReleaseBranch) => __awaiter(void 0, void 0, void 0, function* () {
     const { workspace, workflowPath } = actionContext;
     core.info(`Start configuration of previous version`);
-    const currentVersionNumber = parseInt(releaseVersion);
-    const previousVersionNumber = currentVersionNumber - 1;
-    const previousVersion = `${previousVersionNumber}.0`;
-    const previousReleaseBranch = `release/${previousVersion}`;
+    yield (0, gitUtils_1.fetch)();
+    core.info(`fetch successful`);
     const configurationBranch = `automation/configure-${previousVersion}`;
     yield (0, gitUtils_1.createBranch)(configurationBranch, previousReleaseBranch);
     (0, workflows_1.configureWorkflowPreviousRelease)(releaseVersion, workspace, workflowPath);
@@ -12421,7 +12589,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.push = exports.commit = exports.addAuthor = exports.fetch = exports.doesBranchExist = exports.createBranch = exports.createDirectory = exports.gotoDirectory = void 0;
+exports.mergeIntoCurrent = exports.diff = exports.push = exports.commit = exports.addAuthor = exports.fetch = exports.doesBranchExist = exports.createBranch = exports.createDirectory = exports.gotoDirectory = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const promisify_child_process_1 = __nccwpck_require__(2809);
 const gotoDirectory = (directoryPath) => __awaiter(void 0, void 0, void 0, function* () {
@@ -12485,6 +12653,21 @@ const push = () => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.push = push;
+const diff = (releaseBranch, main, settingPath) => __awaiter(void 0, void 0, void 0, function* () {
+    const { stdout, stderr } = yield (0, promisify_child_process_1.exec)(`git diff --name-only ${main}...${releaseBranch} -- . ':(exclude).github/*' ':(exclude)${settingPath}'`);
+    if (stderr) {
+        core.error(stderr.toString());
+    }
+    return stdout;
+});
+exports.diff = diff;
+const mergeIntoCurrent = (mergeFrom, currentBranch) => __awaiter(void 0, void 0, void 0, function* () {
+    const { stderr } = yield (0, promisify_child_process_1.exec)(`git merge ${mergeFrom} --commit -m "Merge branch ${mergeFrom} into ${currentBranch} get configuration from ${mergeFrom}`);
+    if (stderr) {
+        core.error(stderr.toString());
+    }
+});
+exports.mergeIntoCurrent = mergeIntoCurrent;
 
 
 /***/ }),
@@ -12639,13 +12822,19 @@ exports.configureSettings = configureSettings;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getVersionFromTag = void 0;
+exports.getPreviousVersion = exports.getVersionFromTag = void 0;
 const getVersionFromTag = (tagPrefix, tagName) => {
     const versionNumber = tagName.replace(tagPrefix, '');
     const versions = versionNumber.split('.');
     return versions.slice(0, 2).join('.');
 };
 exports.getVersionFromTag = getVersionFromTag;
+const getPreviousVersion = (releaseVersion) => {
+    const currentVersionNumber = parseInt(releaseVersion);
+    const previousVersionNumber = currentVersionNumber - 1;
+    return `${previousVersionNumber}.0`;
+};
+exports.getPreviousVersion = getPreviousVersion;
 
 
 /***/ }),
@@ -12689,6 +12878,7 @@ const configureWorkflow = (releaseVersion, workspace, workflowPath) => {
     workflow.name = `Sync ${releaseVersion} upwards`;
     workflow.on.push.branches[0] = releaseBranch;
     workflow.jobs['sync-branches'].steps[2].with.SOURCE_BRANCH = releaseBranch;
+    workflow.jobs['sync-branches'].steps[2].with.TARGET_BRANCH = 'develop';
     writeWorkflow(workflow, workspace, workflowPath);
 };
 exports.configureWorkflow = configureWorkflow;

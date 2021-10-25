@@ -6,3 +6,9 @@ export const getVersionFromTag = (
   const versions = versionNumber.split('.')
   return versions.slice(0, 2).join('.')
 }
+
+export const getPreviousVersion = (releaseVersion: string): string => {
+  const currentVersionNumber = parseInt(releaseVersion)
+  const previousVersionNumber = currentVersionNumber - 1
+  return `${previousVersionNumber}.0`
+}

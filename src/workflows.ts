@@ -32,6 +32,7 @@ export const configureWorkflow = (
   workflow.name = `Sync ${releaseVersion} upwards`
   workflow.on.push.branches[0] = releaseBranch
   workflow.jobs['sync-branches'].steps[2].with.SOURCE_BRANCH = releaseBranch
+  workflow.jobs['sync-branches'].steps[2].with.TARGET_BRANCH = 'develop'
   writeWorkflow(workflow, workspace, workflowPath)
 }
 

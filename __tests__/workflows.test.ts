@@ -31,7 +31,7 @@ test('setup workflow for next version', async () => {
     releaseBranch
   )
   expect(workflow.jobs['sync-branches'].steps[2].with.TARGET_BRANCH).toEqual(
-    'main'
+    'develop'
   )
 })
 
