@@ -20,6 +20,9 @@ inputs:
   GIT_USER_NAME:
     description: "git author name"
     required: true
+  WORKFLOW_FILE:
+    description: "Path of the workflow file."
+    required: true
 runs:
   using: 'node12'
   main: 'dist/index.js'

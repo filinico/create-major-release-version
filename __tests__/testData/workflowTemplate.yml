@@ -1,0 +1,22 @@
+name: Sync 10.0 upwards
+'on':
+  push:
+    branches:
+      - release/10.0
+jobs:
+  sync-branches:
+    runs-on: ubuntu-latest
+    name: Sync branches
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 12
+      - name: Create Sync PR
+        uses: mysync/sync-release@v5.0
+        with:
+          GITHUB_TOKEN: ${{secrets.GITHUB}}
+          SOURCE_BRANCH: release/10.0
+          TARGET_BRANCH: main

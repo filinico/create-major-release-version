@@ -12,7 +12,7 @@ beforeEach(() => {
 })
 
 test('setup settings for next version', async () => {
-  await configureSettings('11.0', './__tests__/testData', 'config.json', 'v.')
+  configureSettings('11.0', './__tests__/testData', 'config.json', 'v.')
   const configTemplatePath = path.resolve('./__tests__/testData/config.json')
   const rawData = fs.readFileSync(configTemplatePath, 'utf8')
   const settings = JSON.parse(rawData)
