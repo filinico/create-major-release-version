@@ -66,3 +66,29 @@ export const push = async (): Promise<void> => {
     core.error(stderr.toString())
   }
 }
+
+export const diff = async (
+  releaseBranch: string,
+  main: string,
+  settingPath: string
+): Promise<string | Buffer | null | undefined> => {
+  const {stdout, stderr} = await exec(
+    `git diff --name-only ${main}...${releaseBranch} -- . ':(exclude).github/*' ':(exclude)${settingPath}'`
+  )
+  if (stderr) {
+    core.error(stderr.toString())
+  }
+  return stdout
+}
+
+export const mergeIntoCurrent = async (
+  mergeFrom: string,
+  currentBranch: string
+): Promise<void> => {
+  const {stderr} = await exec(
+    `git merge ${mergeFrom} --commit -m "Merge branch ${mergeFrom} into ${currentBranch} get configuration from ${mergeFrom}`
+  )
+  if (stderr) {
+    core.error(stderr.toString())
+  }
+}

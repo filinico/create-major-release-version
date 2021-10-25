@@ -12419,11 +12419,11 @@ exports.onReleaseCreated = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const gitUtils_1 = __nccwpck_require__(4755);
 const workflows_1 = __nccwpck_require__(4949);
+const version_1 = __nccwpck_require__(1946);
 const gitHubApi_1 = __nccwpck_require__(3562);
 const settings_1 = __nccwpck_require__(1685);
-const version_1 = __nccwpck_require__(1946);
 const onReleaseCreated = (actionContext) => __awaiter(void 0, void 0, void 0, function* () {
-    const { context, workspace, tagPrefix, gitEmail, gitUser } = actionContext;
+    const { context, workspace, tagPrefix, gitEmail, gitUser, settingsPath } = actionContext;
     const { payload: { release: { tag_name, target_commitish, prerelease, id } }, sha } = context;
     core.info(`tag_name:${tag_name}`);
     core.info(`target_commitish:${target_commitish}`);
@@ -12434,30 +12434,42 @@ const onReleaseCreated = (actionContext) => __awaiter(void 0, void 0, void 0, fu
     core.info(`Release version:${releaseVersion}`);
     const releaseBranch = `release/${releaseVersion}`;
     core.info(`Release branch:${releaseBranch}`);
+    const previousVersion = (0, version_1.getPreviousVersion)(releaseVersion);
+    core.info(`Previous version:${previousVersion}`);
+    const previousReleaseBranch = `release/${previousVersion}`;
+    core.info(`Previous release branch:${previousReleaseBranch}`);
     if (!tag_name.endsWith('.0.0')) {
         core.error(`Release branch ${releaseBranch} is not a major version ending with .0.0`);
         return;
     }
     yield (0, gitUtils_1.gotoDirectory)(workspace);
-    if (!(yield (0, gitUtils_1.doesBranchExist)(releaseBranch))) {
-        yield (0, gitUtils_1.addAuthor)(gitEmail, gitUser);
-        core.info(`Author identity added`);
-        yield (0, gitUtils_1.fetch)();
-        core.info(`fetch successful`);
-        yield createNewMajorVersion(actionContext, releaseVersion, releaseBranch);
-        yield configurePreviousVersion(actionContext, releaseVersion);
+    const releaseBranchExists = yield (0, gitUtils_1.doesBranchExist)(releaseBranch);
+    const conflictsExists = yield (0, gitUtils_1.diff)(previousReleaseBranch, 'develop', settingsPath);
+    if (releaseBranchExists || conflictsExists) {
+        core.error(`Cannot proceed with the creation of the release branch ${releaseBranch}:`);
+        if (releaseBranchExists) {
+            core.error(`Release branch ${releaseBranch} already exists`);
+        }
+        if (conflictsExists) {
+            core.error(`There are conflicts between the release branch ${releaseBranch} and develop. Please resolve the conflicts and create a new GitHub release.`);
+        }
+        return;
     }
-    else {
-        core.error(`Release branch ${releaseBranch} already exists`);
-    }
+    yield (0, gitUtils_1.addAuthor)(gitEmail, gitUser);
+    core.info(`Author identity added`);
+    yield configurePreviousVersion(actionContext, releaseVersion, previousVersion, previousReleaseBranch);
+    yield createNewMajorVersion(actionContext, releaseVersion, releaseBranch, previousVersion, previousReleaseBranch);
 });
 exports.onReleaseCreated = onReleaseCreated;
-const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch) => __awaiter(void 0, void 0, void 0, function* () {
+const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch, previousVersion, previousReleaseBranch) => __awaiter(void 0, void 0, void 0, function* () {
     const { context, workspace, settingsPath, versionPrefix, workflowPath } = actionContext;
     const { payload: { release: { target_commitish } } } = context;
     core.info(`Start creation of new major version`);
+    yield (0, gitUtils_1.fetch)();
+    core.info(`fetch successful`);
     yield (0, gitUtils_1.createBranch)(releaseBranch, target_commitish);
     core.info(`Release branch created`);
+    yield (0, gitUtils_1.mergeIntoCurrent)(previousReleaseBranch, releaseBranch);
     (0, settings_1.configureSettings)(releaseVersion, workspace, settingsPath, versionPrefix);
     (0, workflows_1.configureWorkflow)(releaseVersion, workspace, workflowPath);
     yield (0, gitUtils_1.commit)(`setup new version ${releaseVersion}`);
@@ -12466,13 +12478,11 @@ const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch) => 
     core.info(`changes pushed`);
     core.info(`New major version created`);
 });
-const configurePreviousVersion = (actionContext, releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
+const configurePreviousVersion = (actionContext, releaseVersion, previousVersion, previousReleaseBranch) => __awaiter(void 0, void 0, void 0, function* () {
     const { workspace, workflowPath } = actionContext;
     core.info(`Start configuration of previous version`);
-    const currentVersionNumber = parseInt(releaseVersion);
-    const previousVersionNumber = currentVersionNumber - 1;
-    const previousVersion = `${previousVersionNumber}.0`;
-    const previousReleaseBranch = `release/${previousVersion}`;
+    yield (0, gitUtils_1.fetch)();
+    core.info(`fetch successful`);
     const configurationBranch = `automation/configure-${previousVersion}`;
     yield (0, gitUtils_1.createBranch)(configurationBranch, previousReleaseBranch);
     (0, workflows_1.configureWorkflowPreviousRelease)(releaseVersion, workspace, workflowPath);
@@ -12579,7 +12589,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.push = exports.commit = exports.addAuthor = exports.fetch = exports.doesBranchExist = exports.createBranch = exports.createDirectory = exports.gotoDirectory = void 0;
+exports.mergeIntoCurrent = exports.diff = exports.push = exports.commit = exports.addAuthor = exports.fetch = exports.doesBranchExist = exports.createBranch = exports.createDirectory = exports.gotoDirectory = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const promisify_child_process_1 = __nccwpck_require__(2809);
 const gotoDirectory = (directoryPath) => __awaiter(void 0, void 0, void 0, function* () {
@@ -12643,6 +12653,21 @@ const push = () => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.push = push;
+const diff = (releaseBranch, main, settingPath) => __awaiter(void 0, void 0, void 0, function* () {
+    const { stdout, stderr } = yield (0, promisify_child_process_1.exec)(`git diff --name-only ${main}...${releaseBranch} -- . ':(exclude).github/*' ':(exclude)${settingPath}'`);
+    if (stderr) {
+        core.error(stderr.toString());
+    }
+    return stdout;
+});
+exports.diff = diff;
+const mergeIntoCurrent = (mergeFrom, currentBranch) => __awaiter(void 0, void 0, void 0, function* () {
+    const { stderr } = yield (0, promisify_child_process_1.exec)(`git merge ${mergeFrom} --commit -m "Merge branch ${mergeFrom} into ${currentBranch} get configuration from ${mergeFrom}`);
+    if (stderr) {
+        core.error(stderr.toString());
+    }
+});
+exports.mergeIntoCurrent = mergeIntoCurrent;
 
 
 /***/ }),
@@ -12797,13 +12822,19 @@ exports.configureSettings = configureSettings;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getVersionFromTag = void 0;
+exports.getPreviousVersion = exports.getVersionFromTag = void 0;
 const getVersionFromTag = (tagPrefix, tagName) => {
     const versionNumber = tagName.replace(tagPrefix, '');
     const versions = versionNumber.split('.');
     return versions.slice(0, 2).join('.');
 };
 exports.getVersionFromTag = getVersionFromTag;
+const getPreviousVersion = (releaseVersion) => {
+    const currentVersionNumber = parseInt(releaseVersion);
+    const previousVersionNumber = currentVersionNumber - 1;
+    return `${previousVersionNumber}.0`;
+};
+exports.getPreviousVersion = getPreviousVersion;
 
 
 /***/ }),
@@ -12847,6 +12878,7 @@ const configureWorkflow = (releaseVersion, workspace, workflowPath) => {
     workflow.name = `Sync ${releaseVersion} upwards`;
     workflow.on.push.branches[0] = releaseBranch;
     workflow.jobs['sync-branches'].steps[2].with.SOURCE_BRANCH = releaseBranch;
+    workflow.jobs['sync-branches'].steps[2].with.TARGET_BRANCH = 'develop';
     writeWorkflow(workflow, workspace, workflowPath);
 };
 exports.configureWorkflow = configureWorkflow;
