@@ -21,7 +21,7 @@ beforeEach(() => {
 })
 
 test('setup workflow for next version', async () => {
-  configureWorkflow(releaseVersion, workspace, workflowFile)
+  configureWorkflow(releaseVersion, workspace, workflowFile, 'main')
   const newData = fs.readFileSync(workflowPath, 'utf8')
   const object = yaml.load(newData, {filename: workflowPath})
   const workflow = object as Workflow
@@ -31,7 +31,7 @@ test('setup workflow for next version', async () => {
     releaseBranch
   )
   expect(workflow.jobs['sync-branches'].steps[2].with.TARGET_BRANCH).toEqual(
-    'develop'
+    'main'
   )
 })
 

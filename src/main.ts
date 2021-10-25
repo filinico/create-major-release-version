@@ -11,6 +11,8 @@ async function run(): Promise<void> {
     const gitEmail = core.getInput('GIT_USER_EMAIL', {required: true})
     const gitUser = core.getInput('GIT_USER_NAME', {required: true})
     const workflowPath = core.getInput('WORKFLOW_FILE', {required: true})
+    const versionPath = core.getInput('VERSION_FILE', {required: true})
+    const scriptsPath = core.getInput('SCRIPTS_PATH', {required: true})
 
     core.info(`GITHUB workspace=${process.env.GITHUB_WORKSPACE}`)
 
@@ -28,7 +30,9 @@ async function run(): Promise<void> {
       tagPrefix,
       gitUser,
       gitEmail,
-      workflowPath
+      workflowPath,
+      versionPath,
+      scriptsPath
     }
 
     core.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`)

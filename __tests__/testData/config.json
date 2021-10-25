@@ -19,10 +19,10 @@
 			}
 		}
 	],
-	"develop": {
+	"main": {
 		"artifact": {
 			"version": "v.120",
-			"source": "myArtifact/develop/artifact.zip"
+			"source": "myArtifact/main/artifact.zip"
 		},
 		"database": {
 			"version": "v.0.012"

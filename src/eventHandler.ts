@@ -11,11 +11,16 @@ import {
   mergeIntoCurrent,
   push
 } from './gitUtils'
+import {
+  applyNextVersion,
+  getNextVersion,
+  getPreviousVersion,
+  getVersionFromTag
+} from './version'
+import {configureSettings, getNextDbVersion} from './settings'
 import {configureWorkflow, configureWorkflowPreviousRelease} from './workflows'
-import {getPreviousVersion, getVersionFromTag} from './version'
 import {mergePullRequest, openPullRequest} from './gitHubApi'
 import {Context} from '@actions/github/lib/context'
-import {configureSettings} from './settings'
 type GitHub = ReturnType<typeof github.getOctokit>
 
 export interface GitHubContext {
@@ -28,6 +33,8 @@ export interface GitHubContext {
   gitEmail: string
   gitUser: string
   workflowPath: string
+  versionPath: string
+  scriptsPath: string
 }
 
 export const onReleaseCreated = async (
@@ -64,7 +71,7 @@ export const onReleaseCreated = async (
   const releaseBranchExists = await doesBranchExist(releaseBranch)
   const conflictsExists = await diff(
     previousReleaseBranch,
-    'develop',
+    target_commitish,
     settingsPath
   )
   if (releaseBranchExists || conflictsExists) {
@@ -76,7 +83,7 @@ export const onReleaseCreated = async (
     }
     if (conflictsExists) {
       core.error(
-        `There are conflicts between the release branch ${releaseBranch} and develop. Please resolve the conflicts and create a new GitHub release.`
+        `There are conflicts between the release branch ${releaseBranch} and ${target_commitish}. Please resolve the conflicts and create a new GitHub release.`
       )
     }
     return
@@ -94,6 +101,12 @@ export const onReleaseCreated = async (
     actionContext,
     releaseVersion,
     releaseBranch,
+    previousVersion,
+    previousReleaseBranch
+  )
+  await configureNextVersion(
+    actionContext,
+    releaseVersion,
     previousVersion,
     previousReleaseBranch
   )
@@ -119,8 +132,15 @@ const createNewMajorVersion = async (
   await createBranch(releaseBranch, target_commitish)
   core.info(`Release branch created`)
   await mergeIntoCurrent(previousReleaseBranch, releaseBranch)
-  configureSettings(releaseVersion, workspace, settingsPath, versionPrefix)
-  configureWorkflow(releaseVersion, workspace, workflowPath)
+  core.info(`Previous release branch merged`)
+  configureSettings(
+    releaseVersion,
+    workspace,
+    settingsPath,
+    versionPrefix,
+    target_commitish
+  )
+  configureWorkflow(releaseVersion, workspace, workflowPath, target_commitish)
   await commit(`setup new version ${releaseVersion}`)
   core.info(`changes committed`)
   await push()
@@ -138,7 +158,7 @@ const configurePreviousVersion = async (
   core.info(`Start configuration of previous version`)
   await fetch()
   core.info(`fetch successful`)
-  const configurationBranch = `automation/configure-${previousVersion}`
+  const configurationBranch = `automation/configure-previous-version-${previousVersion}`
   await createBranch(configurationBranch, previousReleaseBranch)
   configureWorkflowPreviousRelease(releaseVersion, workspace, workflowPath)
   await commit(`configure new version ${releaseVersion} on ${previousVersion}`)
@@ -166,4 +186,33 @@ const configurePreviousVersion = async (
     core.error(`PR not merged on previous version`)
   }
   core.info(`Previous version configured`)
+}
+
+const configureNextVersion = async (
+  actionContext: GitHubContext,
+  releaseVersion: string,
+  previousVersion: string,
+  previousReleaseBranch: string
+): Promise<void> => {
+  const {context, workspace, settingsPath, versionPath} = actionContext
+  const {
+    payload: {
+      release: {target_commitish}
+    }
+  } = context
+  core.info(`Start configuration of next version`)
+  await fetch()
+  core.info(`fetch successful`)
+  const nextVersion = getNextVersion(releaseVersion)
+  const configurationBranch = `automation/configure-next-version-${nextVersion}`
+  await createBranch(configurationBranch, target_commitish)
+  await mergeIntoCurrent(previousReleaseBranch, configurationBranch)
+  core.info(`Release branch merged`)
+  const nextDbVersion = getNextDbVersion(
+    workspace,
+    settingsPath,
+    target_commitish
+  )
+  applyNextVersion(nextDbVersion, workspace, versionPath)
+  core.info(`Next version modified to ${nextDbVersion}`)
 }
