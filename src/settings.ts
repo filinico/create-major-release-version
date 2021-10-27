@@ -64,3 +64,20 @@ export const getNextDbVersion = (
       settings.release[settings.release.length - 1].database.version
   }
 }
+
+export const loadCodeOwners = (workspace: string): string => {
+  return fs.readFileSync(
+    path.resolve(workspace, '.github', 'CODEOWNERS'),
+    'utf8'
+  )
+}
+
+export const writeCodeOwners = (
+  workspace: string,
+  codeOwners: string
+): void => {
+  return fs.writeFileSync(
+    path.resolve(workspace, '.github', 'CODEOWNERS'),
+    codeOwners
+  )
+}

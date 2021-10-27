@@ -17,7 +17,12 @@ import {
   getPreviousVersion,
   getVersionFromTag
 } from './version'
-import {configureSettings, getNextDbVersion} from './settings'
+import {
+  configureSettings,
+  getNextDbVersion,
+  loadCodeOwners,
+  writeCodeOwners
+} from './settings'
 import {configureWorkflow, configureWorkflowPreviousRelease} from './workflows'
 import {mergePullRequest, openPullRequest} from './gitHubApi'
 import {Context} from '@actions/github/lib/context'
@@ -130,10 +135,12 @@ const createNewMajorVersion = async (
   core.info(`Start creation of new major version`)
   await fetch()
   core.info(`fetch successful`)
+  const codeOwners = loadCodeOwners(workspace)
   await createBranch(releaseBranch, target_commitish)
   core.info(`Release branch created`)
   await mergeIntoCurrent(previousReleaseBranch, releaseBranch)
   core.info(`Previous release branch merged`)
+  writeCodeOwners(workspace, codeOwners)
   configureSettings(
     releaseVersion,
     workspace,

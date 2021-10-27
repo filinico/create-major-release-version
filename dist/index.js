@@ -12469,10 +12469,12 @@ const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch, pre
     core.info(`Start creation of new major version`);
     yield (0, gitUtils_1.fetch)();
     core.info(`fetch successful`);
+    const codeOwners = (0, settings_1.loadCodeOwners)(workspace);
     yield (0, gitUtils_1.createBranch)(releaseBranch, target_commitish);
     core.info(`Release branch created`);
     yield (0, gitUtils_1.mergeIntoCurrent)(previousReleaseBranch, releaseBranch);
     core.info(`Previous release branch merged`);
+    (0, settings_1.writeCodeOwners)(workspace, codeOwners);
     (0, settings_1.configureSettings)(releaseVersion, workspace, settingsPath, versionPrefix, target_commitish);
     (0, workflows_1.configureWorkflow)(releaseVersion, workspace, workflowPath, target_commitish);
     yield (0, gitUtils_1.commit)(`setup new version ${releaseVersion}`);
@@ -12921,7 +12923,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getNextDbVersion = exports.configureSettings = void 0;
+exports.writeCodeOwners = exports.loadCodeOwners = exports.getNextDbVersion = exports.configureSettings = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const fs = __importStar(__nccwpck_require__(5747));
 const path = __importStar(__nccwpck_require__(5622));
@@ -12964,6 +12966,14 @@ const getNextDbVersion = (workspace, settingsPath, mainBranch) => {
     };
 };
 exports.getNextDbVersion = getNextDbVersion;
+const loadCodeOwners = (workspace) => {
+    return fs.readFileSync(path.resolve(workspace, '.github', 'CODEOWNERS'), 'utf8');
+};
+exports.loadCodeOwners = loadCodeOwners;
+const writeCodeOwners = (workspace, codeOwners) => {
+    return fs.writeFileSync(path.resolve(workspace, '.github', 'CODEOWNERS'), codeOwners);
+};
+exports.writeCodeOwners = writeCodeOwners;
 
 
 /***/ }),
