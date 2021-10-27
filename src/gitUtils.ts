@@ -1,4 +1,5 @@
 import * as core from '@actions/core'
+import * as os from 'os'
 import {exec} from 'promisify-child-process'
 
 export const gotoDirectory = async (directoryPath: string): Promise<void> => {
@@ -88,6 +89,31 @@ export const mergeIntoCurrent = async (
   const {stderr} = await exec(
     `git merge ${mergeFrom} --commit -m "Merge branch ${mergeFrom} into ${currentBranch} get configuration from ${mergeFrom}`
   )
+  if (stderr) {
+    core.error(stderr.toString())
+  }
+}
+
+export const copyDirectory = async (
+  copyFrom: string,
+  copyTo: string
+): Promise<void> => {
+  let command = `cp -r ${copyFrom}/ ${copyTo}/`
+  if (os.platform() === 'win32') {
+    command = `xcopy ${copyFrom} ${copyTo} /E /H /C /I`
+  }
+  const {stderr} = await exec(command)
+  if (stderr) {
+    core.error(stderr.toString())
+  }
+}
+
+export const removeDirectory = async (directory: string): Promise<void> => {
+  let command = `rm -rf ${directory}`
+  if (os.platform() === 'win32') {
+    command = `rmdir /s /q ${directory}`
+  }
+  const {stderr} = await exec(command)
   if (stderr) {
     core.error(stderr.toString())
   }

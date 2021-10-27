@@ -43,15 +43,24 @@ export const configureSettings = (
   core.info('settings changed')
 }
 
+interface DbVersions {
+  currentDbVersion: string
+  nextDbVersion: string
+}
+
 export const getNextDbVersion = (
   workspace: string,
   settingsPath: string,
   mainBranch: string
-): string => {
+): DbVersions => {
   core.info(`settingsPath:${settingsPath}`)
   const filePath = path.resolve(workspace, settingsPath)
   const rawData = fs.readFileSync(filePath, 'utf8')
   const settings = JSON.parse(rawData)
   core.info(`current settings:${rawData}`)
-  return settings[mainBranch].database.version
+  return {
+    nextDbVersion: settings[mainBranch].database.version,
+    currentDbVersion:
+      settings.release[settings.release.length - 1].database.version
+  }
 }

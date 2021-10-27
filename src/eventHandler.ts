@@ -21,6 +21,7 @@ import {configureSettings, getNextDbVersion} from './settings'
 import {configureWorkflow, configureWorkflowPreviousRelease} from './workflows'
 import {mergePullRequest, openPullRequest} from './gitHubApi'
 import {Context} from '@actions/github/lib/context'
+import {configureScripts} from './scripts'
 type GitHub = ReturnType<typeof github.getOctokit>
 
 export interface GitHubContext {
@@ -108,7 +109,7 @@ export const onReleaseCreated = async (
     actionContext,
     releaseVersion,
     previousVersion,
-    previousReleaseBranch
+    releaseBranch
   )
 }
 
@@ -192,9 +193,10 @@ const configureNextVersion = async (
   actionContext: GitHubContext,
   releaseVersion: string,
   previousVersion: string,
-  previousReleaseBranch: string
+  releaseBranch: string
 ): Promise<void> => {
-  const {context, workspace, settingsPath, versionPath} = actionContext
+  const {context, workspace, settingsPath, versionPath, scriptsPath} =
+    actionContext
   const {
     payload: {
       release: {target_commitish}
@@ -206,13 +208,45 @@ const configureNextVersion = async (
   const nextVersion = getNextVersion(releaseVersion)
   const configurationBranch = `automation/configure-next-version-${nextVersion}`
   await createBranch(configurationBranch, target_commitish)
-  await mergeIntoCurrent(previousReleaseBranch, configurationBranch)
-  core.info(`Release branch merged`)
-  const nextDbVersion = getNextDbVersion(
+  await mergeIntoCurrent(releaseBranch, configurationBranch)
+  core.info(`Release branch merged into ${target_commitish}`)
+  const {nextDbVersion, currentDbVersion} = getNextDbVersion(
     workspace,
     settingsPath,
     target_commitish
   )
   applyNextVersion(nextDbVersion, workspace, versionPath)
   core.info(`Next version modified to ${nextDbVersion}`)
+  await configureScripts(
+    currentDbVersion,
+    nextDbVersion,
+    workspace,
+    scriptsPath
+  )
+  core.info(`Scripts added for next version ${nextDbVersion}`)
+  await commit(`configure next version ${nextVersion} on ${target_commitish}`)
+  core.info(`Next version changes committed`)
+  await push()
+  core.info(`Next version changes pushed`)
+  const title = `Configure next version ${nextVersion} on ${target_commitish}`
+  const pullRequestId = await openPullRequest(
+    actionContext,
+    title,
+    title,
+    configurationBranch,
+    target_commitish
+  )
+  const mergeCommitMessage = `Merge pull request #${pullRequestId} from ${configurationBranch}`
+  const isMerged = await mergePullRequest(
+    actionContext,
+    pullRequestId,
+    mergeCommitMessage,
+    mergeCommitMessage
+  )
+  if (isMerged) {
+    core.info(`PR merged on ${target_commitish}`)
+  } else {
+    core.error(`PR not merged on ${target_commitish}`)
+  }
+  core.info(`Next version configured on ${target_commitish}`)
 }
