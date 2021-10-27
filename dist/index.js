@@ -12516,8 +12516,10 @@ const configureNextVersion = (actionContext, releaseVersion, previousVersion, re
     const nextVersion = (0, version_1.getNextVersion)(releaseVersion);
     const configurationBranch = `automation/configure-next-version-${nextVersion}`;
     yield (0, gitUtils_1.createBranch)(configurationBranch, target_commitish);
+    const codeOwners = (0, settings_1.loadCodeOwners)(workspace);
     yield (0, gitUtils_1.mergeIntoCurrent)(releaseBranch, configurationBranch);
     core.info(`Release branch merged into ${target_commitish}`);
+    (0, settings_1.writeCodeOwners)(workspace, codeOwners);
     const { nextDbVersion, currentDbVersion } = (0, settings_1.getNextDbVersion)(workspace, settingsPath, target_commitish);
     (0, version_1.applyNextVersion)(nextDbVersion, workspace, versionPath);
     core.info(`Next version modified to ${nextDbVersion}`);

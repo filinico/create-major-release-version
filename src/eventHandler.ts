@@ -215,8 +215,10 @@ const configureNextVersion = async (
   const nextVersion = getNextVersion(releaseVersion)
   const configurationBranch = `automation/configure-next-version-${nextVersion}`
   await createBranch(configurationBranch, target_commitish)
+  const codeOwners = loadCodeOwners(workspace)
   await mergeIntoCurrent(releaseBranch, configurationBranch)
   core.info(`Release branch merged into ${target_commitish}`)
+  writeCodeOwners(workspace, codeOwners)
   const {nextDbVersion, currentDbVersion} = getNextDbVersion(
     workspace,
     settingsPath,
