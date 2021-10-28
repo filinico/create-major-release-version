@@ -7,6 +7,7 @@ import path from 'path'
 import fs from 'fs'
 import {removeDirectory} from '../src/gitUtils'
 
+jest.setTimeout(70000)
 const workspace = './__tests__/testData'
 const directoryPath = 'scripts'
 const scriptsPath = path.resolve(workspace, directoryPath)
@@ -16,8 +17,8 @@ beforeEach(async () => {})
 test('list files of directory recursive', async () => {
   const templatesPath = path.resolve(scriptsPath, 'templates')
   expect(listFiles(templatesPath)).toEqual([
-    path.resolve(templatesPath, 'scriptTemplate.sql'),
-    path.resolve(templatesPath, 'secondLevel', 'anotherScript.sql')
+    path.resolve(templatesPath, 'secondLevel', 'XX_anotherScript.sql'),
+    path.resolve(templatesPath, 'XX_scriptTemplate.sql')
   ])
 })
 
@@ -25,7 +26,7 @@ test('apply versions into file', async () => {
   const templatePath = path.resolve(
     scriptsPath,
     'templates',
-    'scriptTemplate.sql'
+    'XX_scriptTemplate.sql'
   )
   const rawData = fs.readFileSync(templatePath, 'utf8')
   const filePath = path.resolve(scriptsPath, 'script.sql')
@@ -42,6 +43,11 @@ test('configure scripts', async () => {
   for (const file of files) {
     const newData = fs.readFileSync(file, 'utf8')
     expect(newData).toMatchSnapshot()
+    const filename = file
+      .substring(file.lastIndexOf('\\') + 1)
+      .substring(file.lastIndexOf('/') + 1)
+    expect(filename.startsWith('XX')).toEqual(false)
+    expect(filename.startsWith('v.0.011')).toEqual(true)
   }
   await removeDirectory(path.resolve(scriptsPath, 'v.0.011'))
 })

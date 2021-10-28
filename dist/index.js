@@ -12628,7 +12628,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.removeDirectory = exports.copyDirectory = exports.mergeIntoCurrent = exports.diff = exports.push = exports.commit = exports.addAuthor = exports.fetch = exports.doesBranchExist = exports.createBranch = exports.createDirectory = exports.gotoDirectory = void 0;
+exports.renameFile = exports.removeDirectory = exports.copyDirectory = exports.mergeIntoCurrent = exports.diff = exports.push = exports.commit = exports.addAuthor = exports.fetch = exports.doesBranchExist = exports.createBranch = exports.createDirectory = exports.gotoDirectory = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const os = __importStar(__nccwpck_require__(2087));
 const promisify_child_process_1 = __nccwpck_require__(2809);
@@ -12730,6 +12730,18 @@ const removeDirectory = (directory) => __awaiter(void 0, void 0, void 0, functio
     }
 });
 exports.removeDirectory = removeDirectory;
+const renameFile = (oldFile, newFile) => __awaiter(void 0, void 0, void 0, function* () {
+    let command = `mv ${oldFile} ${newFile}`;
+    if (os.platform() === 'win32') {
+        const filename = newFile.substring(newFile.lastIndexOf('\\') + 1);
+        command = `rename ${oldFile} ${filename}`;
+    }
+    const { stderr } = yield (0, promisify_child_process_1.exec)(command);
+    if (stderr) {
+        core.error(stderr.toString());
+    }
+});
+exports.renameFile = renameFile;
 
 
 /***/ }),
@@ -12871,6 +12883,8 @@ const configureScripts = (currentDbVersion, nextDbVersion, workspace, scriptsPat
     const files = (0, exports.listFiles)(copyTo);
     for (const file of files) {
         (0, exports.applyVersionsIntoFile)(file, currentDbVersion, nextDbVersion);
+        const filename = file.replace('XX', nextDbVersion);
+        yield (0, gitUtils_1.renameFile)(file, filename);
     }
 });
 exports.configureScripts = configureScripts;

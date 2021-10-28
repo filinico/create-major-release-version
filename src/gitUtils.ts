@@ -118,3 +118,18 @@ export const removeDirectory = async (directory: string): Promise<void> => {
     core.error(stderr.toString())
   }
 }
+
+export const renameFile = async (
+  oldFile: string,
+  newFile: string
+): Promise<void> => {
+  let command = `mv ${oldFile} ${newFile}`
+  if (os.platform() === 'win32') {
+    const filename = newFile.substring(newFile.lastIndexOf('\\') + 1)
+    command = `rename ${oldFile} ${filename}`
+  }
+  const {stderr} = await exec(command)
+  if (stderr) {
+    core.error(stderr.toString())
+  }
+}

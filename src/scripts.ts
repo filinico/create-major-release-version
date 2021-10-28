@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {copyDirectory} from './gitUtils'
+import {copyDirectory, renameFile} from './gitUtils'
 import fs from 'fs'
 import path from 'path'
 
@@ -15,6 +15,8 @@ export const configureScripts = async (
   const files = listFiles(copyTo)
   for (const file of files) {
     applyVersionsIntoFile(file, currentDbVersion, nextDbVersion)
+    const filename = file.replace('XX', nextDbVersion)
+    await renameFile(file, filename)
   }
 }
 
