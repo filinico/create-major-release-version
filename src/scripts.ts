@@ -15,7 +15,8 @@ export const configureScripts = async (
   const files = listFiles(copyTo)
   for (const file of files) {
     applyVersionsIntoFile(file, currentDbVersion, nextDbVersion)
-    const filename = file.replace('XX', nextDbVersion)
+    const shorterVersion = nextDbVersion.replace('.0.', '')
+    const filename = file.replace('XX', shorterVersion)
     await renameFile(file, filename)
   }
 }

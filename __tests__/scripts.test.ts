@@ -47,7 +47,7 @@ test('configure scripts', async () => {
       .substring(file.lastIndexOf('\\') + 1)
       .substring(file.lastIndexOf('/') + 1)
     expect(filename.startsWith('XX')).toEqual(false)
-    expect(filename.startsWith('v.0.011')).toEqual(true)
+    expect(filename.startsWith('v011')).toEqual(true)
   }
   await removeDirectory(path.resolve(scriptsPath, 'v.0.011'))
 })

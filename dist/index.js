@@ -12520,8 +12520,8 @@ const configureNextVersion = (actionContext, releaseVersion, previousVersion, re
     yield (0, gitUtils_1.mergeIntoCurrent)(releaseBranch, configurationBranch);
     core.info(`Release branch merged into ${target_commitish}`);
     (0, settings_1.writeCodeOwners)(workspace, codeOwners);
-    const { nextDbVersion, currentDbVersion } = (0, settings_1.getNextDbVersion)(workspace, settingsPath, target_commitish);
-    (0, version_1.applyNextVersion)(nextDbVersion, workspace, versionPath);
+    const { nextDbVersion, currentDbVersion, nextArtifactVersion } = (0, settings_1.getVersionsFromSettings)(workspace, settingsPath, target_commitish);
+    (0, version_1.applyNextVersion)(nextArtifactVersion, workspace, versionPath);
     core.info(`Next version modified to ${nextDbVersion}`);
     yield (0, scripts_1.configureScripts)(currentDbVersion, nextDbVersion, workspace, scriptsPath);
     core.info(`Scripts added for next version ${nextDbVersion}`);
@@ -12883,7 +12883,8 @@ const configureScripts = (currentDbVersion, nextDbVersion, workspace, scriptsPat
     const files = (0, exports.listFiles)(copyTo);
     for (const file of files) {
         (0, exports.applyVersionsIntoFile)(file, currentDbVersion, nextDbVersion);
-        const filename = file.replace('XX', nextDbVersion);
+        const shorterVersion = nextDbVersion.replace('.0.', '');
+        const filename = file.replace('XX', shorterVersion);
         yield (0, gitUtils_1.renameFile)(file, filename);
     }
 });
@@ -12939,7 +12940,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.writeCodeOwners = exports.loadCodeOwners = exports.getNextDbVersion = exports.configureSettings = void 0;
+exports.writeCodeOwners = exports.loadCodeOwners = exports.getVersionsFromSettings = exports.configureSettings = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const fs = __importStar(__nccwpck_require__(5747));
 const path = __importStar(__nccwpck_require__(5622));
@@ -12970,7 +12971,7 @@ const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefi
     core.info('settings changed');
 };
 exports.configureSettings = configureSettings;
-const getNextDbVersion = (workspace, settingsPath, mainBranch) => {
+const getVersionsFromSettings = (workspace, settingsPath, mainBranch) => {
     core.info(`settingsPath:${settingsPath}`);
     const filePath = path.resolve(workspace, settingsPath);
     const rawData = fs.readFileSync(filePath, 'utf8');
@@ -12978,10 +12979,11 @@ const getNextDbVersion = (workspace, settingsPath, mainBranch) => {
     core.info(`current settings:${rawData}`);
     return {
         nextDbVersion: settings[mainBranch].database.version,
-        currentDbVersion: settings.release[settings.release.length - 1].database.version
+        currentDbVersion: settings.release[settings.release.length - 1].database.version,
+        nextArtifactVersion: settings[mainBranch].artifact.version
     };
 };
-exports.getNextDbVersion = getNextDbVersion;
+exports.getVersionsFromSettings = getVersionsFromSettings;
 const loadCodeOwners = (workspace) => {
     return fs.readFileSync(path.resolve(workspace, '.github', 'CODEOWNERS'), 'utf8');
 };

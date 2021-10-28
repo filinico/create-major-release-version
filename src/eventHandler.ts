@@ -19,7 +19,7 @@ import {
 } from './version'
 import {
   configureSettings,
-  getNextDbVersion,
+  getVersionsFromSettings,
   loadCodeOwners,
   writeCodeOwners
 } from './settings'
@@ -219,12 +219,9 @@ const configureNextVersion = async (
   await mergeIntoCurrent(releaseBranch, configurationBranch)
   core.info(`Release branch merged into ${target_commitish}`)
   writeCodeOwners(workspace, codeOwners)
-  const {nextDbVersion, currentDbVersion} = getNextDbVersion(
-    workspace,
-    settingsPath,
-    target_commitish
-  )
-  applyNextVersion(nextDbVersion, workspace, versionPath)
+  const {nextDbVersion, currentDbVersion, nextArtifactVersion} =
+    getVersionsFromSettings(workspace, settingsPath, target_commitish)
+  applyNextVersion(nextArtifactVersion, workspace, versionPath)
   core.info(`Next version modified to ${nextDbVersion}`)
   await configureScripts(
     currentDbVersion,

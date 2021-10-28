@@ -46,9 +46,10 @@ export const configureSettings = (
 interface DbVersions {
   currentDbVersion: string
   nextDbVersion: string
+  nextArtifactVersion: string
 }
 
-export const getNextDbVersion = (
+export const getVersionsFromSettings = (
   workspace: string,
   settingsPath: string,
   mainBranch: string
@@ -61,7 +62,8 @@ export const getNextDbVersion = (
   return {
     nextDbVersion: settings[mainBranch].database.version,
     currentDbVersion:
-      settings.release[settings.release.length - 1].database.version
+      settings.release[settings.release.length - 1].database.version,
+    nextArtifactVersion: settings[mainBranch].artifact.version
   }
 }
 
