@@ -12444,7 +12444,8 @@ const onReleaseCreated = (actionContext) => __awaiter(void 0, void 0, void 0, fu
         return;
     }
     yield (0, gitUtils_1.gotoDirectory)(workspace);
-    yield (0, gitUtils_1.fetch)();
+    yield (0, gitUtils_1.fetch)(target_commitish);
+    yield (0, gitUtils_1.fetch)(previousReleaseBranch);
     const releaseBranchExists = yield (0, gitUtils_1.doesBranchExist)(releaseBranch);
     const conflictsExists = yield (0, gitUtils_1.diff)(previousReleaseBranch, target_commitish, settingsPath);
     if (releaseBranchExists || conflictsExists) {
@@ -12468,7 +12469,8 @@ const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch, pre
     const { context, workspace, settingsPath, versionPrefix, workflowPath } = actionContext;
     const { payload: { release: { target_commitish } } } = context;
     core.info(`Start creation of new major version`);
-    yield (0, gitUtils_1.fetch)();
+    yield (0, gitUtils_1.fetch)(previousReleaseBranch);
+    yield (0, gitUtils_1.fetch)(target_commitish);
     core.info(`fetch successful`);
     const codeOwners = (0, settings_1.loadCodeOwners)(workspace);
     yield (0, gitUtils_1.createBranch)(releaseBranch, target_commitish);
@@ -12487,7 +12489,7 @@ const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch, pre
 const configurePreviousVersion = (actionContext, releaseVersion, previousVersion, previousReleaseBranch) => __awaiter(void 0, void 0, void 0, function* () {
     const { workspace, workflowPath } = actionContext;
     core.info(`Start configuration of previous version`);
-    yield (0, gitUtils_1.fetch)();
+    yield (0, gitUtils_1.fetch)(previousReleaseBranch);
     core.info(`fetch successful`);
     const configurationBranch = `automation/configure-previous-version-${previousVersion}`;
     yield (0, gitUtils_1.createBranch)(configurationBranch, previousReleaseBranch);
@@ -12512,7 +12514,8 @@ const configureNextVersion = (actionContext, releaseVersion, previousVersion, re
     const { context, workspace, settingsPath, versionPath, scriptsPath } = actionContext;
     const { payload: { release: { target_commitish } } } = context;
     core.info(`Start configuration of next version`);
-    yield (0, gitUtils_1.fetch)();
+    yield (0, gitUtils_1.fetch)(releaseBranch);
+    yield (0, gitUtils_1.fetch)(target_commitish);
     core.info(`fetch successful`);
     const nextVersion = (0, version_1.getNextVersion)(releaseVersion);
     const configurationBranch = `automation/configure-next-version-${nextVersion}`;
@@ -12667,8 +12670,8 @@ const doesBranchExist = (branchName) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.doesBranchExist = doesBranchExist;
-const fetch = () => __awaiter(void 0, void 0, void 0, function* () {
-    const { stderr } = yield (0, promisify_child_process_1.exec)(`git fetch --all`);
+const fetch = (branchName) => __awaiter(void 0, void 0, void 0, function* () {
+    const { stderr } = yield (0, promisify_child_process_1.exec)(`git fetch --no-tags origin ${branchName}`);
     if (stderr) {
         core.error(stderr.toString());
     }

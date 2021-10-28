@@ -38,8 +38,8 @@ export const doesBranchExist = async (branchName: string): Promise<boolean> => {
   }
 }
 
-export const fetch = async (): Promise<void> => {
-  const {stderr} = await exec(`git fetch --all`)
+export const fetch = async (branchName: string): Promise<void> => {
+  const {stderr} = await exec(`git fetch --no-tags origin ${branchName}`)
   if (stderr) {
     core.error(stderr.toString())
   }

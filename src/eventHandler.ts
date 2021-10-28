@@ -74,7 +74,8 @@ export const onReleaseCreated = async (
     return
   }
   await gotoDirectory(workspace)
-  await fetch()
+  await fetch(target_commitish)
+  await fetch(previousReleaseBranch)
   const releaseBranchExists = await doesBranchExist(releaseBranch)
   const conflictsExists = await diff(
     previousReleaseBranch,
@@ -134,7 +135,8 @@ const createNewMajorVersion = async (
     }
   } = context
   core.info(`Start creation of new major version`)
-  await fetch()
+  await fetch(previousReleaseBranch)
+  await fetch(target_commitish)
   core.info(`fetch successful`)
   const codeOwners = loadCodeOwners(workspace)
   await createBranch(releaseBranch, target_commitish)
@@ -165,7 +167,7 @@ const configurePreviousVersion = async (
 ): Promise<void> => {
   const {workspace, workflowPath} = actionContext
   core.info(`Start configuration of previous version`)
-  await fetch()
+  await fetch(previousReleaseBranch)
   core.info(`fetch successful`)
   const configurationBranch = `automation/configure-previous-version-${previousVersion}`
   await createBranch(configurationBranch, previousReleaseBranch)
@@ -211,7 +213,8 @@ const configureNextVersion = async (
     }
   } = context
   core.info(`Start configuration of next version`)
-  await fetch()
+  await fetch(releaseBranch)
+  await fetch(target_commitish)
   core.info(`fetch successful`)
   const nextVersion = getNextVersion(releaseVersion)
   const configurationBranch = `automation/configure-next-version-${nextVersion}`
