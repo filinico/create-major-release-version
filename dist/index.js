@@ -12439,7 +12439,7 @@ const onReleaseCreated = (actionContext) => __awaiter(void 0, void 0, void 0, fu
     core.info(`Previous version:${previousVersion}`);
     const previousReleaseBranch = `release/${previousVersion}`;
     core.info(`Previous release branch:${previousReleaseBranch}`);
-    if (!tag_name.endsWith('.0.0')) {
+    if (!tag_name.includes('.0.0')) {
         core.error(`Release branch ${releaseBranch} is not a major version ending with .0.0`);
         return;
     }
