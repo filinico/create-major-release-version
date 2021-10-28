@@ -12694,7 +12694,7 @@ const push = () => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.push = push;
 const diff = (releaseBranch, main, settingPath) => __awaiter(void 0, void 0, void 0, function* () {
-    const { stdout, stderr } = yield (0, promisify_child_process_1.exec)(`git diff --name-only ${main}...${releaseBranch} -- . ':(exclude).github/*' ':(exclude)${settingPath}'`);
+    const { stdout, stderr } = yield (0, promisify_child_process_1.exec)(`git diff --name-only origin/${main}...origin/${releaseBranch} -- . ':(exclude).github/*' ':(exclude)${settingPath}'`);
     if (stderr) {
         core.error(stderr.toString());
     }

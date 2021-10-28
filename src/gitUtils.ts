@@ -74,7 +74,7 @@ export const diff = async (
   settingPath: string
 ): Promise<string | Buffer | null | undefined> => {
   const {stdout, stderr} = await exec(
-    `git diff --name-only ${main}...${releaseBranch} -- . ':(exclude).github/*' ':(exclude)${settingPath}'`
+    `git diff --name-only origin/${main}...origin/${releaseBranch} -- . ':(exclude).github/*' ':(exclude)${settingPath}'`
   )
   if (stderr) {
     core.error(stderr.toString())
