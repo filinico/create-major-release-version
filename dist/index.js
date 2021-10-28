@@ -12444,6 +12444,7 @@ const onReleaseCreated = (actionContext) => __awaiter(void 0, void 0, void 0, fu
         return;
     }
     yield (0, gitUtils_1.gotoDirectory)(workspace);
+    yield (0, gitUtils_1.fetch)();
     const releaseBranchExists = yield (0, gitUtils_1.doesBranchExist)(releaseBranch);
     const conflictsExists = yield (0, gitUtils_1.diff)(previousReleaseBranch, target_commitish, settingsPath);
     if (releaseBranchExists || conflictsExists) {

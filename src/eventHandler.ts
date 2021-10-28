@@ -74,6 +74,7 @@ export const onReleaseCreated = async (
     return
   }
   await gotoDirectory(workspace)
+  await fetch()
   const releaseBranchExists = await doesBranchExist(releaseBranch)
   const conflictsExists = await diff(
     previousReleaseBranch,
