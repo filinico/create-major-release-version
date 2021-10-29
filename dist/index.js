@@ -12706,7 +12706,7 @@ const diff = (releaseBranch, main, settingPath) => __awaiter(void 0, void 0, voi
 });
 exports.diff = diff;
 const mergeIntoCurrent = (mergeFrom, currentBranch) => __awaiter(void 0, void 0, void 0, function* () {
-    const { stderr } = yield (0, promisify_child_process_1.exec)(`git merge ${mergeFrom} --commit -m "Merge branch ${mergeFrom} into ${currentBranch} get configuration from ${mergeFrom}"`);
+    const { stderr } = yield (0, promisify_child_process_1.exec)(`git merge origin/${mergeFrom} --commit -m "Merge branch ${mergeFrom} into ${currentBranch} get configuration from ${mergeFrom}"`);
     if (stderr) {
         core.error(stderr.toString());
     }

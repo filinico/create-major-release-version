@@ -87,7 +87,7 @@ export const mergeIntoCurrent = async (
   currentBranch: string
 ): Promise<void> => {
   const {stderr} = await exec(
-    `git merge ${mergeFrom} --commit -m "Merge branch ${mergeFrom} into ${currentBranch} get configuration from ${mergeFrom}"`
+    `git merge origin/${mergeFrom} --commit -m "Merge branch ${mergeFrom} into ${currentBranch} get configuration from ${mergeFrom}"`
   )
   if (stderr) {
     core.error(stderr.toString())
