@@ -25,14 +25,15 @@ export interface Workflow {
 export const configureWorkflow = (
   releaseVersion: string,
   workspace: string,
-  workflowPath: string
+  workflowPath: string,
+  mainBranch: string
 ): void => {
   const workflow = loadWorkflow(workspace, workflowPath)
   const releaseBranch = `release/${releaseVersion}`
   workflow.name = `Sync ${releaseVersion} upwards`
   workflow.on.push.branches[0] = releaseBranch
   workflow.jobs['sync-branches'].steps[2].with.SOURCE_BRANCH = releaseBranch
-  workflow.jobs['sync-branches'].steps[2].with.TARGET_BRANCH = 'develop'
+  workflow.jobs['sync-branches'].steps[2].with.TARGET_BRANCH = mainBranch
   writeWorkflow(workflow, workspace, workflowPath)
 }
 

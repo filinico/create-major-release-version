@@ -1,4 +1,5 @@
 import * as core from '@actions/core'
+import * as os from 'os'
 import {exec} from 'promisify-child-process'
 
 export const gotoDirectory = async (directoryPath: string): Promise<void> => {
@@ -37,8 +38,8 @@ export const doesBranchExist = async (branchName: string): Promise<boolean> => {
   }
 }
 
-export const fetch = async (): Promise<void> => {
-  const {stderr} = await exec(`git fetch --all`)
+export const fetch = async (branchName: string): Promise<void> => {
+  const {stderr} = await exec(`git fetch --no-tags origin ${branchName}`)
   if (stderr) {
     core.error(stderr.toString())
   }
@@ -73,7 +74,7 @@ export const diff = async (
   settingPath: string
 ): Promise<string | Buffer | null | undefined> => {
   const {stdout, stderr} = await exec(
-    `git diff --name-only ${main}...${releaseBranch} -- . ':(exclude).github/*' ':(exclude)${settingPath}'`
+    `git diff --name-only origin/${main}...origin/${releaseBranch} -- . ':(exclude).github/*' ':(exclude)${settingPath}'`
   )
   if (stderr) {
     core.error(stderr.toString())
@@ -86,8 +87,48 @@ export const mergeIntoCurrent = async (
   currentBranch: string
 ): Promise<void> => {
   const {stderr} = await exec(
-    `git merge ${mergeFrom} --commit -m "Merge branch ${mergeFrom} into ${currentBranch} get configuration from ${mergeFrom}`
+    `git merge origin/${mergeFrom} --commit -m "Merge branch ${mergeFrom} into ${currentBranch} get configuration from ${mergeFrom}"`
   )
+  if (stderr) {
+    core.error(stderr.toString())
+  }
+}
+
+export const copyDirectory = async (
+  copyFrom: string,
+  copyTo: string
+): Promise<void> => {
+  let command = `cp -r ${copyFrom}/ ${copyTo}/`
+  if (os.platform() === 'win32') {
+    command = `xcopy ${copyFrom} ${copyTo} /E /H /C /I`
+  }
+  const {stderr} = await exec(command)
+  if (stderr) {
+    core.error(stderr.toString())
+  }
+}
+
+export const removeDirectory = async (directory: string): Promise<void> => {
+  let command = `rm -rf ${directory}`
+  if (os.platform() === 'win32') {
+    command = `rmdir /s /q ${directory}`
+  }
+  const {stderr} = await exec(command)
+  if (stderr) {
+    core.error(stderr.toString())
+  }
+}
+
+export const renameFile = async (
+  oldFile: string,
+  newFile: string
+): Promise<void> => {
+  let command = `mv ${oldFile} ${newFile}`
+  if (os.platform() === 'win32') {
+    const filename = newFile.substring(newFile.lastIndexOf('\\') + 1)
+    command = `rename ${oldFile} ${filename}`
+  }
+  const {stderr} = await exec(command)
   if (stderr) {
     core.error(stderr.toString())
   }

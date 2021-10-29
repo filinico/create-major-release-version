@@ -12418,10 +12418,11 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.onReleaseCreated = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const gitUtils_1 = __nccwpck_require__(4755);
-const workflows_1 = __nccwpck_require__(4949);
 const version_1 = __nccwpck_require__(1946);
-const gitHubApi_1 = __nccwpck_require__(3562);
 const settings_1 = __nccwpck_require__(1685);
+const workflows_1 = __nccwpck_require__(4949);
+const gitHubApi_1 = __nccwpck_require__(3562);
+const scripts_1 = __nccwpck_require__(7512);
 const onReleaseCreated = (actionContext) => __awaiter(void 0, void 0, void 0, function* () {
     const { context, workspace, tagPrefix, gitEmail, gitUser, settingsPath } = actionContext;
     const { payload: { release: { tag_name, target_commitish, prerelease, id } }, sha } = context;
@@ -12438,20 +12439,22 @@ const onReleaseCreated = (actionContext) => __awaiter(void 0, void 0, void 0, fu
     core.info(`Previous version:${previousVersion}`);
     const previousReleaseBranch = `release/${previousVersion}`;
     core.info(`Previous release branch:${previousReleaseBranch}`);
-    if (!tag_name.endsWith('.0.0')) {
+    if (!tag_name.includes('.0.0')) {
         core.error(`Release branch ${releaseBranch} is not a major version ending with .0.0`);
         return;
     }
     yield (0, gitUtils_1.gotoDirectory)(workspace);
+    yield (0, gitUtils_1.fetch)(target_commitish);
+    yield (0, gitUtils_1.fetch)(previousReleaseBranch);
     const releaseBranchExists = yield (0, gitUtils_1.doesBranchExist)(releaseBranch);
-    const conflictsExists = yield (0, gitUtils_1.diff)(previousReleaseBranch, 'develop', settingsPath);
+    const conflictsExists = yield (0, gitUtils_1.diff)(previousReleaseBranch, target_commitish, settingsPath);
     if (releaseBranchExists || conflictsExists) {
         core.error(`Cannot proceed with the creation of the release branch ${releaseBranch}:`);
         if (releaseBranchExists) {
             core.error(`Release branch ${releaseBranch} already exists`);
         }
         if (conflictsExists) {
-            core.error(`There are conflicts between the release branch ${releaseBranch} and develop. Please resolve the conflicts and create a new GitHub release.`);
+            core.error(`There are conflicts between the release branch ${releaseBranch} and ${target_commitish}. Please resolve the conflicts and create a new GitHub release.`);
         }
         return;
     }
@@ -12459,19 +12462,24 @@ const onReleaseCreated = (actionContext) => __awaiter(void 0, void 0, void 0, fu
     core.info(`Author identity added`);
     yield configurePreviousVersion(actionContext, releaseVersion, previousVersion, previousReleaseBranch);
     yield createNewMajorVersion(actionContext, releaseVersion, releaseBranch, previousVersion, previousReleaseBranch);
+    yield configureNextVersion(actionContext, releaseVersion, previousVersion, releaseBranch);
 });
 exports.onReleaseCreated = onReleaseCreated;
 const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch, previousVersion, previousReleaseBranch) => __awaiter(void 0, void 0, void 0, function* () {
     const { context, workspace, settingsPath, versionPrefix, workflowPath } = actionContext;
     const { payload: { release: { target_commitish } } } = context;
     core.info(`Start creation of new major version`);
-    yield (0, gitUtils_1.fetch)();
+    yield (0, gitUtils_1.fetch)(previousReleaseBranch);
+    yield (0, gitUtils_1.fetch)(target_commitish);
     core.info(`fetch successful`);
+    const codeOwners = (0, settings_1.loadCodeOwners)(workspace);
     yield (0, gitUtils_1.createBranch)(releaseBranch, target_commitish);
     core.info(`Release branch created`);
     yield (0, gitUtils_1.mergeIntoCurrent)(previousReleaseBranch, releaseBranch);
-    (0, settings_1.configureSettings)(releaseVersion, workspace, settingsPath, versionPrefix);
-    (0, workflows_1.configureWorkflow)(releaseVersion, workspace, workflowPath);
+    core.info(`Previous release branch merged`);
+    (0, settings_1.writeCodeOwners)(workspace, codeOwners);
+    (0, settings_1.configureSettings)(releaseVersion, workspace, settingsPath, versionPrefix, target_commitish);
+    (0, workflows_1.configureWorkflow)(releaseVersion, workspace, workflowPath, target_commitish);
     yield (0, gitUtils_1.commit)(`setup new version ${releaseVersion}`);
     core.info(`changes committed`);
     yield (0, gitUtils_1.push)();
@@ -12481,9 +12489,9 @@ const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch, pre
 const configurePreviousVersion = (actionContext, releaseVersion, previousVersion, previousReleaseBranch) => __awaiter(void 0, void 0, void 0, function* () {
     const { workspace, workflowPath } = actionContext;
     core.info(`Start configuration of previous version`);
-    yield (0, gitUtils_1.fetch)();
+    yield (0, gitUtils_1.fetch)(previousReleaseBranch);
     core.info(`fetch successful`);
-    const configurationBranch = `automation/configure-${previousVersion}`;
+    const configurationBranch = `automation/configure-previous-version-${previousVersion}`;
     yield (0, gitUtils_1.createBranch)(configurationBranch, previousReleaseBranch);
     (0, workflows_1.configureWorkflowPreviousRelease)(releaseVersion, workspace, workflowPath);
     yield (0, gitUtils_1.commit)(`configure new version ${releaseVersion} on ${previousVersion}`);
@@ -12501,6 +12509,41 @@ const configurePreviousVersion = (actionContext, releaseVersion, previousVersion
         core.error(`PR not merged on previous version`);
     }
     core.info(`Previous version configured`);
+});
+const configureNextVersion = (actionContext, releaseVersion, previousVersion, releaseBranch) => __awaiter(void 0, void 0, void 0, function* () {
+    const { context, workspace, settingsPath, versionPath, scriptsPath } = actionContext;
+    const { payload: { release: { target_commitish } } } = context;
+    core.info(`Start configuration of next version`);
+    yield (0, gitUtils_1.fetch)(releaseBranch);
+    yield (0, gitUtils_1.fetch)(target_commitish);
+    core.info(`fetch successful`);
+    const nextVersion = (0, version_1.getNextVersion)(releaseVersion);
+    const configurationBranch = `automation/configure-next-version-${nextVersion}`;
+    yield (0, gitUtils_1.createBranch)(configurationBranch, target_commitish);
+    const codeOwners = (0, settings_1.loadCodeOwners)(workspace);
+    yield (0, gitUtils_1.mergeIntoCurrent)(releaseBranch, configurationBranch);
+    core.info(`Release branch merged into ${target_commitish}`);
+    (0, settings_1.writeCodeOwners)(workspace, codeOwners);
+    const { nextDbVersion, currentDbVersion, nextArtifactVersion } = (0, settings_1.getVersionsFromSettings)(workspace, settingsPath, target_commitish);
+    (0, version_1.applyNextVersion)(nextArtifactVersion, workspace, versionPath);
+    core.info(`Next version modified to ${nextDbVersion}`);
+    yield (0, scripts_1.configureScripts)(currentDbVersion, nextDbVersion, workspace, scriptsPath);
+    core.info(`Scripts added for next version ${nextDbVersion}`);
+    yield (0, gitUtils_1.commit)(`configure next version ${nextVersion} on ${target_commitish}`);
+    core.info(`Next version changes committed`);
+    yield (0, gitUtils_1.push)();
+    core.info(`Next version changes pushed`);
+    const title = `Configure next version ${nextVersion} on ${target_commitish}`;
+    const pullRequestId = yield (0, gitHubApi_1.openPullRequest)(actionContext, title, title, configurationBranch, target_commitish);
+    const mergeCommitMessage = `Merge pull request #${pullRequestId} from ${configurationBranch}`;
+    const isMerged = yield (0, gitHubApi_1.mergePullRequest)(actionContext, pullRequestId, mergeCommitMessage, mergeCommitMessage);
+    if (isMerged) {
+        core.info(`PR merged on ${target_commitish}`);
+    }
+    else {
+        core.error(`PR not merged on ${target_commitish}`);
+    }
+    core.info(`Next version configured on ${target_commitish}`);
 });
 
 
@@ -12589,8 +12632,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.mergeIntoCurrent = exports.diff = exports.push = exports.commit = exports.addAuthor = exports.fetch = exports.doesBranchExist = exports.createBranch = exports.createDirectory = exports.gotoDirectory = void 0;
+exports.renameFile = exports.removeDirectory = exports.copyDirectory = exports.mergeIntoCurrent = exports.diff = exports.push = exports.commit = exports.addAuthor = exports.fetch = exports.doesBranchExist = exports.createBranch = exports.createDirectory = exports.gotoDirectory = void 0;
 const core = __importStar(__nccwpck_require__(2186));
+const os = __importStar(__nccwpck_require__(2087));
 const promisify_child_process_1 = __nccwpck_require__(2809);
 const gotoDirectory = (directoryPath) => __awaiter(void 0, void 0, void 0, function* () {
     const { stderr } = yield (0, promisify_child_process_1.exec)(`cd ${directoryPath}`);
@@ -12626,8 +12670,8 @@ const doesBranchExist = (branchName) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.doesBranchExist = doesBranchExist;
-const fetch = () => __awaiter(void 0, void 0, void 0, function* () {
-    const { stderr } = yield (0, promisify_child_process_1.exec)(`git fetch --all`);
+const fetch = (branchName) => __awaiter(void 0, void 0, void 0, function* () {
+    const { stderr } = yield (0, promisify_child_process_1.exec)(`git fetch --no-tags origin ${branchName}`);
     if (stderr) {
         core.error(stderr.toString());
     }
@@ -12654,7 +12698,7 @@ const push = () => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.push = push;
 const diff = (releaseBranch, main, settingPath) => __awaiter(void 0, void 0, void 0, function* () {
-    const { stdout, stderr } = yield (0, promisify_child_process_1.exec)(`git diff --name-only ${main}...${releaseBranch} -- . ':(exclude).github/*' ':(exclude)${settingPath}'`);
+    const { stdout, stderr } = yield (0, promisify_child_process_1.exec)(`git diff --name-only origin/${main}...origin/${releaseBranch} -- . ':(exclude).github/*' ':(exclude)${settingPath}'`);
     if (stderr) {
         core.error(stderr.toString());
     }
@@ -12662,12 +12706,46 @@ const diff = (releaseBranch, main, settingPath) => __awaiter(void 0, void 0, voi
 });
 exports.diff = diff;
 const mergeIntoCurrent = (mergeFrom, currentBranch) => __awaiter(void 0, void 0, void 0, function* () {
-    const { stderr } = yield (0, promisify_child_process_1.exec)(`git merge ${mergeFrom} --commit -m "Merge branch ${mergeFrom} into ${currentBranch} get configuration from ${mergeFrom}`);
+    const { stderr } = yield (0, promisify_child_process_1.exec)(`git merge origin/${mergeFrom} --commit -m "Merge branch ${mergeFrom} into ${currentBranch} get configuration from ${mergeFrom}"`);
     if (stderr) {
         core.error(stderr.toString());
     }
 });
 exports.mergeIntoCurrent = mergeIntoCurrent;
+const copyDirectory = (copyFrom, copyTo) => __awaiter(void 0, void 0, void 0, function* () {
+    let command = `cp -r ${copyFrom}/ ${copyTo}/`;
+    if (os.platform() === 'win32') {
+        command = `xcopy ${copyFrom} ${copyTo} /E /H /C /I`;
+    }
+    const { stderr } = yield (0, promisify_child_process_1.exec)(command);
+    if (stderr) {
+        core.error(stderr.toString());
+    }
+});
+exports.copyDirectory = copyDirectory;
+const removeDirectory = (directory) => __awaiter(void 0, void 0, void 0, function* () {
+    let command = `rm -rf ${directory}`;
+    if (os.platform() === 'win32') {
+        command = `rmdir /s /q ${directory}`;
+    }
+    const { stderr } = yield (0, promisify_child_process_1.exec)(command);
+    if (stderr) {
+        core.error(stderr.toString());
+    }
+});
+exports.removeDirectory = removeDirectory;
+const renameFile = (oldFile, newFile) => __awaiter(void 0, void 0, void 0, function* () {
+    let command = `mv ${oldFile} ${newFile}`;
+    if (os.platform() === 'win32') {
+        const filename = newFile.substring(newFile.lastIndexOf('\\') + 1);
+        command = `rename ${oldFile} ${filename}`;
+    }
+    const { stderr } = yield (0, promisify_child_process_1.exec)(command);
+    if (stderr) {
+        core.error(stderr.toString());
+    }
+});
+exports.renameFile = renameFile;
 
 
 /***/ }),
@@ -12719,6 +12797,8 @@ function run() {
             const gitEmail = core.getInput('GIT_USER_EMAIL', { required: true });
             const gitUser = core.getInput('GIT_USER_NAME', { required: true });
             const workflowPath = core.getInput('WORKFLOW_FILE', { required: true });
+            const versionPath = core.getInput('VERSION_FILE', { required: true });
+            const scriptsPath = core.getInput('SCRIPTS_PATH', { required: true });
             core.info(`GITHUB workspace=${process.env.GITHUB_WORKSPACE}`);
             if (process.env.GITHUB_WORKSPACE === undefined) {
                 throw new Error('GITHUB_WORKSPACE not defined.');
@@ -12733,7 +12813,9 @@ function run() {
                 tagPrefix,
                 gitUser,
                 gitEmail,
-                workflowPath
+                workflowPath,
+                versionPath,
+                scriptsPath
             };
             core.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`);
             core.info(`GITHUB context action=${gitHubContext.context.payload.action}`);
@@ -12752,6 +12834,87 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 7512:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.listFiles = exports.applyVersionsIntoFile = exports.configureScripts = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const gitUtils_1 = __nccwpck_require__(4755);
+const fs_1 = __importDefault(__nccwpck_require__(5747));
+const path_1 = __importDefault(__nccwpck_require__(5622));
+const configureScripts = (currentDbVersion, nextDbVersion, workspace, scriptsPath) => __awaiter(void 0, void 0, void 0, function* () {
+    const copyFrom = path_1.default.resolve(workspace, scriptsPath, 'templates');
+    const copyTo = path_1.default.resolve(workspace, scriptsPath, `${nextDbVersion}`);
+    yield (0, gitUtils_1.copyDirectory)(copyFrom, copyTo);
+    const files = (0, exports.listFiles)(copyTo);
+    for (const file of files) {
+        (0, exports.applyVersionsIntoFile)(file, currentDbVersion, nextDbVersion);
+        const shorterVersion = nextDbVersion.replace('.0.', '');
+        const filename = file.replace('XX', shorterVersion);
+        yield (0, gitUtils_1.renameFile)(file, filename);
+    }
+});
+exports.configureScripts = configureScripts;
+const applyVersionsIntoFile = (scriptPath, currentDbVersion, nextDbVersion) => {
+    core.info(`script Path:${scriptPath}`);
+    const filePath = path_1.default.resolve(scriptPath);
+    const rawData = fs_1.default.readFileSync(filePath, 'utf8');
+    let script = rawData.replace(/{{CURRENT_DB_VERSION}}/g, `'${currentDbVersion}'`);
+    script = script.replace(/{{NEXT_DB_VERSION}}/g, `'${nextDbVersion}'`);
+    fs_1.default.writeFileSync(filePath, script);
+};
+exports.applyVersionsIntoFile = applyVersionsIntoFile;
+const listFiles = (directoryPath) => {
+    const files = fs_1.default.readdirSync(directoryPath, 'utf8');
+    return files.flatMap(file => {
+        const filePath = path_1.default.resolve(directoryPath, file);
+        if (fs_1.default.statSync(filePath).isDirectory()) {
+            return (0, exports.listFiles)(filePath);
+        }
+        else {
+            return filePath;
+        }
+    });
+};
+exports.listFiles = listFiles;
 
 
 /***/ }),
@@ -12781,11 +12944,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.configureSettings = void 0;
+exports.writeCodeOwners = exports.loadCodeOwners = exports.getVersionsFromSettings = exports.configureSettings = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const fs = __importStar(__nccwpck_require__(5747));
 const path = __importStar(__nccwpck_require__(5622));
-const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefix) => {
+const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefix, mainBranch) => {
     core.info(`settingsPath:${settingsPath}`);
     const filePath = path.resolve(workspace, settingsPath);
     const rawData = fs.readFileSync(filePath, 'utf8');
@@ -12794,35 +12957,81 @@ const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefi
     const versions = releaseVersion.split('.');
     const majorVersion = versions[0];
     const currentReleaseSettings = {
-        artifact: Object.assign(Object.assign({}, settings.develop.artifact), { source: settings.develop.artifact.source.replace('develop', `release_${majorVersion}.0`) }),
-        database: Object.assign({}, settings.develop.database)
+        artifact: Object.assign(Object.assign({}, settings[mainBranch].artifact), { source: settings[mainBranch].artifact.source.replace(mainBranch, `release_${majorVersion}.0`) }),
+        database: Object.assign({}, settings[mainBranch].database)
     };
     settings.release.push(currentReleaseSettings);
-    const newDevelopSettings = settings.develop;
+    const newMainSettings = settings[mainBranch];
     const nextMajorVersion = parseInt(majorVersion) + 1;
     const nextArtifactVersion = `${versionPrefix}${nextMajorVersion}0`;
     const nextDbVersion = `${versionPrefix}0.0${nextMajorVersion}`;
     core.info(`nextArtifactVersion:${nextArtifactVersion}`);
     core.info(`nextDbVersion:${nextDbVersion}`);
-    newDevelopSettings.artifact.version = nextArtifactVersion;
-    newDevelopSettings.database.version = nextDbVersion;
+    newMainSettings.artifact.version = nextArtifactVersion;
+    newMainSettings.database.version = nextDbVersion;
     const strSettings = JSON.stringify(settings, null, '\t');
     core.info(`new settings:${strSettings}`);
     fs.writeFileSync(filePath, strSettings);
     core.info('settings changed');
 };
 exports.configureSettings = configureSettings;
+const getVersionsFromSettings = (workspace, settingsPath, mainBranch) => {
+    core.info(`settingsPath:${settingsPath}`);
+    const filePath = path.resolve(workspace, settingsPath);
+    const rawData = fs.readFileSync(filePath, 'utf8');
+    const settings = JSON.parse(rawData);
+    core.info(`current settings:${rawData}`);
+    return {
+        nextDbVersion: settings[mainBranch].database.version,
+        currentDbVersion: settings.release[settings.release.length - 1].database.version,
+        nextArtifactVersion: settings[mainBranch].artifact.version
+    };
+};
+exports.getVersionsFromSettings = getVersionsFromSettings;
+const loadCodeOwners = (workspace) => {
+    return fs.readFileSync(path.resolve(workspace, '.github', 'CODEOWNERS'), 'utf8');
+};
+exports.loadCodeOwners = loadCodeOwners;
+const writeCodeOwners = (workspace, codeOwners) => {
+    return fs.writeFileSync(path.resolve(workspace, '.github', 'CODEOWNERS'), codeOwners);
+};
+exports.writeCodeOwners = writeCodeOwners;
 
 
 /***/ }),
 
 /***/ 1946:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getPreviousVersion = exports.getVersionFromTag = void 0;
+exports.applyNextVersion = exports.getNextVersion = exports.getPreviousVersion = exports.getVersionFromTag = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const fs_1 = __importDefault(__nccwpck_require__(5747));
+const path_1 = __importDefault(__nccwpck_require__(5622));
 const getVersionFromTag = (tagPrefix, tagName) => {
     const versionNumber = tagName.replace(tagPrefix, '');
     const versions = versionNumber.split('.');
@@ -12835,6 +13044,18 @@ const getPreviousVersion = (releaseVersion) => {
     return `${previousVersionNumber}.0`;
 };
 exports.getPreviousVersion = getPreviousVersion;
+const getNextVersion = (releaseVersion) => {
+    const currentVersionNumber = parseInt(releaseVersion);
+    const previousVersionNumber = currentVersionNumber + 1;
+    return `${previousVersionNumber}.0`;
+};
+exports.getNextVersion = getNextVersion;
+const applyNextVersion = (nextVersion, workspace, versionPath) => {
+    const filePath = path_1.default.resolve(workspace, versionPath);
+    fs_1.default.writeFileSync(filePath, nextVersion);
+    core.info('version changed');
+};
+exports.applyNextVersion = applyNextVersion;
 
 
 /***/ }),
@@ -12872,13 +13093,13 @@ const core = __importStar(__nccwpck_require__(2186));
 const yaml = __importStar(__nccwpck_require__(1917));
 const fs_1 = __importDefault(__nccwpck_require__(5747));
 const path_1 = __importDefault(__nccwpck_require__(5622));
-const configureWorkflow = (releaseVersion, workspace, workflowPath) => {
+const configureWorkflow = (releaseVersion, workspace, workflowPath, mainBranch) => {
     const workflow = loadWorkflow(workspace, workflowPath);
     const releaseBranch = `release/${releaseVersion}`;
     workflow.name = `Sync ${releaseVersion} upwards`;
     workflow.on.push.branches[0] = releaseBranch;
     workflow.jobs['sync-branches'].steps[2].with.SOURCE_BRANCH = releaseBranch;
-    workflow.jobs['sync-branches'].steps[2].with.TARGET_BRANCH = 'develop';
+    workflow.jobs['sync-branches'].steps[2].with.TARGET_BRANCH = mainBranch;
     writeWorkflow(workflow, workspace, workflowPath);
 };
 exports.configureWorkflow = configureWorkflow;

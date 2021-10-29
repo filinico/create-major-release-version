@@ -23,6 +23,12 @@ inputs:
   WORKFLOW_FILE:
     description: "Path of the workflow file."
     required: true
+  VERSION_FILE:
+    description: "Path of the version file."
+    required: true
+  SCRIPTS_PATH:
+    description: "Path of the scripts files."
+    required: true
 runs:
   using: 'node12'
   main: 'dist/index.js'

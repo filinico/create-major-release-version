@@ -1,0 +1,52 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`apply versions into file 1`] = `
+"DECLARE @DBVersion AS nvarchar(10), @ExpectedDBVersion AS nvarchar(10), @NextDBVersion AS nvarchar(10);
+SET @ExpectedDBVersion = 'v.0.010';
+SET @NextDBVersion = 'v.0.011';
+PRINT '+--------------------------------------------------------------+';
+PRINT '| current database version: ' + @DBVersion + '                            |';
+PRINT '+--------------------------------------------------------------+';
+PRINT '';
+PRINT '########  ########'
+PRINT '';
+SET @ExpectedDBVersion = 'v.0.010';
+SET @NextDBVersion = 'v.0.011';
+PRINT '';
+PRINT '########  ########'
+PRINT '';"
+`;
+
+exports[`configure scripts 1`] = `
+"DECLARE @DBVersion AS nvarchar(10), @ExpectedDBVersion AS nvarchar(10), @NextDBVersion AS nvarchar(10);
+SET @ExpectedDBVersion = 'v.0.010';
+SET @NextDBVersion = 'v.0.011';
+PRINT '+--------------------------------------------------------------+';
+PRINT '| current database version: ' + @DBVersion + '                            |';
+PRINT '+--------------------------------------------------------------+';
+PRINT '';
+PRINT '########  ########'
+PRINT '';
+SET @ExpectedDBVersion = 'v.0.010';
+SET @NextDBVersion = 'v.0.011';
+PRINT '';
+PRINT '########  ########'
+PRINT '';"
+`;
+
+exports[`configure scripts 2`] = `
+"DECLARE @DBVersion AS nvarchar(10), @ExpectedDBVersion AS nvarchar(10), @NextDBVersion AS nvarchar(10);
+SET @ExpectedDBVersion = 'v.0.010';
+SET @NextDBVersion = 'v.0.011';
+PRINT '+--------------------------------------------------------------+';
+PRINT '| current database version: ' + @DBVersion + '                            |';
+PRINT '+--------------------------------------------------------------+';
+PRINT '';
+PRINT '########  ########'
+PRINT '';
+SET @ExpectedDBVersion = 'v.0.010';
+SET @NextDBVersion = 'v.0.011';
+PRINT '';
+PRINT '########  ########'
+PRINT '';"
+`;

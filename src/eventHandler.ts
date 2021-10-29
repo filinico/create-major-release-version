@@ -11,11 +11,22 @@ import {
   mergeIntoCurrent,
   push
 } from './gitUtils'
+import {
+  applyNextVersion,
+  getNextVersion,
+  getPreviousVersion,
+  getVersionFromTag
+} from './version'
+import {
+  configureSettings,
+  getVersionsFromSettings,
+  loadCodeOwners,
+  writeCodeOwners
+} from './settings'
 import {configureWorkflow, configureWorkflowPreviousRelease} from './workflows'
-import {getPreviousVersion, getVersionFromTag} from './version'
 import {mergePullRequest, openPullRequest} from './gitHubApi'
 import {Context} from '@actions/github/lib/context'
-import {configureSettings} from './settings'
+import {configureScripts} from './scripts'
 type GitHub = ReturnType<typeof github.getOctokit>
 
 export interface GitHubContext {
@@ -28,6 +39,8 @@ export interface GitHubContext {
   gitEmail: string
   gitUser: string
   workflowPath: string
+  versionPath: string
+  scriptsPath: string
 }
 
 export const onReleaseCreated = async (
@@ -54,17 +67,19 @@ export const onReleaseCreated = async (
   core.info(`Previous version:${previousVersion}`)
   const previousReleaseBranch = `release/${previousVersion}`
   core.info(`Previous release branch:${previousReleaseBranch}`)
-  if (!tag_name.endsWith('.0.0')) {
+  if (!tag_name.includes('.0.0')) {
     core.error(
       `Release branch ${releaseBranch} is not a major version ending with .0.0`
     )
     return
   }
   await gotoDirectory(workspace)
+  await fetch(target_commitish)
+  await fetch(previousReleaseBranch)
   const releaseBranchExists = await doesBranchExist(releaseBranch)
   const conflictsExists = await diff(
     previousReleaseBranch,
-    'develop',
+    target_commitish,
     settingsPath
   )
   if (releaseBranchExists || conflictsExists) {
@@ -76,7 +91,7 @@ export const onReleaseCreated = async (
     }
     if (conflictsExists) {
       core.error(
-        `There are conflicts between the release branch ${releaseBranch} and develop. Please resolve the conflicts and create a new GitHub release.`
+        `There are conflicts between the release branch ${releaseBranch} and ${target_commitish}. Please resolve the conflicts and create a new GitHub release.`
       )
     }
     return
@@ -97,6 +112,12 @@ export const onReleaseCreated = async (
     previousVersion,
     previousReleaseBranch
   )
+  await configureNextVersion(
+    actionContext,
+    releaseVersion,
+    previousVersion,
+    releaseBranch
+  )
 }
 
 const createNewMajorVersion = async (
@@ -114,13 +135,23 @@ const createNewMajorVersion = async (
     }
   } = context
   core.info(`Start creation of new major version`)
-  await fetch()
+  await fetch(previousReleaseBranch)
+  await fetch(target_commitish)
   core.info(`fetch successful`)
+  const codeOwners = loadCodeOwners(workspace)
   await createBranch(releaseBranch, target_commitish)
   core.info(`Release branch created`)
   await mergeIntoCurrent(previousReleaseBranch, releaseBranch)
-  configureSettings(releaseVersion, workspace, settingsPath, versionPrefix)
-  configureWorkflow(releaseVersion, workspace, workflowPath)
+  core.info(`Previous release branch merged`)
+  writeCodeOwners(workspace, codeOwners)
+  configureSettings(
+    releaseVersion,
+    workspace,
+    settingsPath,
+    versionPrefix,
+    target_commitish
+  )
+  configureWorkflow(releaseVersion, workspace, workflowPath, target_commitish)
   await commit(`setup new version ${releaseVersion}`)
   core.info(`changes committed`)
   await push()
@@ -136,9 +167,9 @@ const configurePreviousVersion = async (
 ): Promise<void> => {
   const {workspace, workflowPath} = actionContext
   core.info(`Start configuration of previous version`)
-  await fetch()
+  await fetch(previousReleaseBranch)
   core.info(`fetch successful`)
-  const configurationBranch = `automation/configure-${previousVersion}`
+  const configurationBranch = `automation/configure-previous-version-${previousVersion}`
   await createBranch(configurationBranch, previousReleaseBranch)
   configureWorkflowPreviousRelease(releaseVersion, workspace, workflowPath)
   await commit(`configure new version ${releaseVersion} on ${previousVersion}`)
@@ -166,4 +197,66 @@ const configurePreviousVersion = async (
     core.error(`PR not merged on previous version`)
   }
   core.info(`Previous version configured`)
+}
+
+const configureNextVersion = async (
+  actionContext: GitHubContext,
+  releaseVersion: string,
+  previousVersion: string,
+  releaseBranch: string
+): Promise<void> => {
+  const {context, workspace, settingsPath, versionPath, scriptsPath} =
+    actionContext
+  const {
+    payload: {
+      release: {target_commitish}
+    }
+  } = context
+  core.info(`Start configuration of next version`)
+  await fetch(releaseBranch)
+  await fetch(target_commitish)
+  core.info(`fetch successful`)
+  const nextVersion = getNextVersion(releaseVersion)
+  const configurationBranch = `automation/configure-next-version-${nextVersion}`
+  await createBranch(configurationBranch, target_commitish)
+  const codeOwners = loadCodeOwners(workspace)
+  await mergeIntoCurrent(releaseBranch, configurationBranch)
+  core.info(`Release branch merged into ${target_commitish}`)
+  writeCodeOwners(workspace, codeOwners)
+  const {nextDbVersion, currentDbVersion, nextArtifactVersion} =
+    getVersionsFromSettings(workspace, settingsPath, target_commitish)
+  applyNextVersion(nextArtifactVersion, workspace, versionPath)
+  core.info(`Next version modified to ${nextDbVersion}`)
+  await configureScripts(
+    currentDbVersion,
+    nextDbVersion,
+    workspace,
+    scriptsPath
+  )
+  core.info(`Scripts added for next version ${nextDbVersion}`)
+  await commit(`configure next version ${nextVersion} on ${target_commitish}`)
+  core.info(`Next version changes committed`)
+  await push()
+  core.info(`Next version changes pushed`)
+  const title = `Configure next version ${nextVersion} on ${target_commitish}`
+  const pullRequestId = await openPullRequest(
+    actionContext,
+    title,
+    title,
+    configurationBranch,
+    target_commitish
+  )
+  const mergeCommitMessage = `Merge pull request #${pullRequestId} from ${configurationBranch}`
+  const isMerged = await mergePullRequest(
+    actionContext,
+    pullRequestId,
+    mergeCommitMessage,
+    mergeCommitMessage
+  )
+  if (isMerged) {
+    core.info(`PR merged on ${target_commitish}`)
+  } else {
+    core.error(`PR not merged on ${target_commitish}`)
+  }
+  core.info(`Next version configured on ${target_commitish}`)
 }
