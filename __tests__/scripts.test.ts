@@ -6,6 +6,7 @@ import {
 import path from 'path'
 import fs from 'fs'
 import {removeDirectory} from '../src/gitUtils'
+import {expect} from '@jest/globals'
 
 jest.setTimeout(70000)
 const workspace = './__tests__/testData'
@@ -16,10 +17,10 @@ beforeEach(async () => {})
 
 test('list files of directory recursive', async () => {
   const templatesPath = path.resolve(scriptsPath, 'templates')
-  expect(listFiles(templatesPath)).toEqual([
-    path.resolve(templatesPath, 'secondLevel', 'XX_anotherScript.sql'),
-    path.resolve(templatesPath, 'XX_scriptTemplate.sql')
-  ])
+  const files = listFiles(templatesPath)
+  expect(files).toHaveLength(2)
+  expect(files).toContain(path.resolve(templatesPath, 'secondLevel', 'XX_anotherScript.sql'))
+  expect(files).toContain(path.resolve(templatesPath, 'XX_scriptTemplate.sql'))
 })
 
 test('apply versions into file', async () => {
