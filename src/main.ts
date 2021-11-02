@@ -35,6 +35,24 @@ async function run(): Promise<void> {
       scriptsPath
     }
 
+    const jiraContext = {
+      subDomain: core.getInput('JIRA_SUBDOMAIN', {required: true}),
+      email: core.getInput('JIRA_USER', {required: true}),
+      token: core.getInput('JIRA_TOKEN', {required: true}),
+      projectsIds: core
+        .getInput('JIRA_PROJECTS_IDS', {required: true})
+        .split(','),
+      projectsKeys: core
+        .getInput('JIRA_PROJECTS_KEYS', {required: true})
+        .split(','),
+      masterProjectId: core.getInput('JIRA_MASTER_PROJECT_ID', {
+        required: true
+      }),
+      masterProjectKey: core.getInput('JIRA_MASTER_PROJECT_KEY', {
+        required: true
+      })
+    }
+
     core.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`)
     core.info(`GITHUB context action=${gitHubContext.context.payload.action}`)
     if (
@@ -42,7 +60,7 @@ async function run(): Promise<void> {
       github.context.payload.action === 'created'
     ) {
       core.info(`start onReleaseCreated`)
-      const releaseInfo = await onReleaseCreated(gitHubContext)
+      const releaseInfo = await onReleaseCreated(gitHubContext, jiraContext)
       core.setOutput('RELEASE_INFO', releaseInfo)
       core.info(`onReleaseCreated finished`)
     }

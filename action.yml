@@ -29,6 +29,27 @@ inputs:
   SCRIPTS_PATH:
     description: "Path of the scripts files."
     required: true
+  JIRA_SUBDOMAIN:
+    description: "subdomain to jira cloud"
+    required: true
+  JIRA_USER:
+    description: "username for jira cloud"
+    required: true
+  JIRA_TOKEN:
+    description: "token for jira cloud"
+    required: true
+  JIRA_PROJECTS_IDS:
+    description: "projects ids from jira cloud. list comma separated"
+    required: true
+  JIRA_PROJECTS_KEYS:
+    description: "projects keys from jira cloud. list comma separated"
+    required: true
+  JIRA_MASTER_PROJECT_ID:
+    description: "master project id from jira cloud"
+    required: true
+  JIRA_MASTER_PROJECT_KEY:
+    description: "master project key jira cloud"
+    required: true
 outputs:
   RELEASE_INFO:
     description: "Information about created release version."

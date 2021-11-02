@@ -26,6 +26,8 @@ import {
 import {configureWorkflow, configureWorkflowPreviousRelease} from './workflows'
 import {mergePullRequest, openPullRequest} from './gitHubApi'
 import {Context} from '@actions/github/lib/context'
+import {JiraContext} from './jiraApi'
+import {configureJira} from './jiraUpdate'
 import {configureScripts} from './scripts'
 type GitHub = ReturnType<typeof github.getOctokit>
 
@@ -49,7 +51,8 @@ interface ReleaseInfo {
 }
 
 export const onReleaseCreated = async (
-  actionContext: GitHubContext
+  actionContext: GitHubContext,
+  jiraContext: JiraContext
 ): Promise<ReleaseInfo> => {
   const {context, workspace, tagPrefix, gitEmail, gitUser, settingsPath} =
     actionContext
@@ -121,6 +124,7 @@ export const onReleaseCreated = async (
     previousVersion,
     releaseBranch
   )
+  await configureJira(jiraContext, releaseVersion, tagPrefix)
   const currentRelease = releaseVersion.replace('.0', '')
   const nextRelease = getNextVersion(releaseVersion).replace('.0', '')
   return {
