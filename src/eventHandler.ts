@@ -43,9 +43,14 @@ export interface GitHubContext {
   scriptsPath: string
 }
 
+interface ReleaseInfo {
+  currentRelease: string
+  nextRelease: string
+}
+
 export const onReleaseCreated = async (
   actionContext: GitHubContext
-): Promise<void> => {
+): Promise<ReleaseInfo> => {
   const {context, workspace, tagPrefix, gitEmail, gitUser, settingsPath} =
     actionContext
   const {
@@ -68,10 +73,9 @@ export const onReleaseCreated = async (
   const previousReleaseBranch = `release/${previousVersion}`
   core.info(`Previous release branch:${previousReleaseBranch}`)
   if (!tag_name.includes('.0.0')) {
-    core.error(
+    throw new Error(
       `Release branch ${releaseBranch} is not a major version ending with .0.0`
     )
-    return
   }
   await gotoDirectory(workspace)
   await fetch(target_commitish)
@@ -83,9 +87,6 @@ export const onReleaseCreated = async (
     settingsPath
   )
   if (releaseBranchExists || conflictsExists) {
-    core.error(
-      `Cannot proceed with the creation of the release branch ${releaseBranch}:`
-    )
     if (releaseBranchExists) {
       core.error(`Release branch ${releaseBranch} already exists`)
     }
@@ -94,7 +95,9 @@ export const onReleaseCreated = async (
         `There are conflicts between the release branch ${releaseBranch} and ${target_commitish}. Please resolve the conflicts and create a new GitHub release.`
       )
     }
-    return
+    throw new Error(
+      `Cannot proceed with the creation of the release branch ${releaseBranch}.`
+    )
   }
 
   await addAuthor(gitEmail, gitUser)
@@ -118,6 +121,12 @@ export const onReleaseCreated = async (
     previousVersion,
     releaseBranch
   )
+  const currentRelease = releaseVersion.replace('.0', '')
+  const nextRelease = getNextVersion(releaseVersion).replace('.0', '')
+  return {
+    currentRelease,
+    nextRelease
+  }
 }
 
 const createNewMajorVersion = async (

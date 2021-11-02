@@ -12440,8 +12440,7 @@ const onReleaseCreated = (actionContext) => __awaiter(void 0, void 0, void 0, fu
     const previousReleaseBranch = `release/${previousVersion}`;
     core.info(`Previous release branch:${previousReleaseBranch}`);
     if (!tag_name.includes('.0.0')) {
-        core.error(`Release branch ${releaseBranch} is not a major version ending with .0.0`);
-        return;
+        throw new Error(`Release branch ${releaseBranch} is not a major version ending with .0.0`);
     }
     yield (0, gitUtils_1.gotoDirectory)(workspace);
     yield (0, gitUtils_1.fetch)(target_commitish);
@@ -12449,20 +12448,25 @@ const onReleaseCreated = (actionContext) => __awaiter(void 0, void 0, void 0, fu
     const releaseBranchExists = yield (0, gitUtils_1.doesBranchExist)(releaseBranch);
     const conflictsExists = yield (0, gitUtils_1.diff)(previousReleaseBranch, target_commitish, settingsPath);
     if (releaseBranchExists || conflictsExists) {
-        core.error(`Cannot proceed with the creation of the release branch ${releaseBranch}:`);
         if (releaseBranchExists) {
             core.error(`Release branch ${releaseBranch} already exists`);
         }
         if (conflictsExists) {
             core.error(`There are conflicts between the release branch ${releaseBranch} and ${target_commitish}. Please resolve the conflicts and create a new GitHub release.`);
         }
-        return;
+        throw new Error(`Cannot proceed with the creation of the release branch ${releaseBranch}.`);
     }
     yield (0, gitUtils_1.addAuthor)(gitEmail, gitUser);
     core.info(`Author identity added`);
     yield configurePreviousVersion(actionContext, releaseVersion, previousVersion, previousReleaseBranch);
     yield createNewMajorVersion(actionContext, releaseVersion, releaseBranch, previousVersion, previousReleaseBranch);
     yield configureNextVersion(actionContext, releaseVersion, previousVersion, releaseBranch);
+    const currentRelease = releaseVersion.replace('.0', '');
+    const nextRelease = (0, version_1.getNextVersion)(releaseVersion).replace('.0', '');
+    return {
+        currentRelease,
+        nextRelease
+    };
 });
 exports.onReleaseCreated = onReleaseCreated;
 const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch, previousVersion, previousReleaseBranch) => __awaiter(void 0, void 0, void 0, function* () {
@@ -12822,7 +12826,8 @@ function run() {
             if (process.env.GITHUB_EVENT_NAME === 'release' &&
                 github.context.payload.action === 'created') {
                 core.info(`start onReleaseCreated`);
-                yield (0, eventHandler_1.onReleaseCreated)(gitHubContext);
+                const releaseInfo = yield (0, eventHandler_1.onReleaseCreated)(gitHubContext);
+                core.setOutput('RELEASE_INFO', releaseInfo);
                 core.info(`onReleaseCreated finished`);
             }
         }
