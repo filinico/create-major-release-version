@@ -42,7 +42,8 @@ async function run(): Promise<void> {
       github.context.payload.action === 'created'
     ) {
       core.info(`start onReleaseCreated`)
-      await onReleaseCreated(gitHubContext)
+      const releaseInfo = await onReleaseCreated(gitHubContext)
+      core.setOutput('RELEASE_INFO', releaseInfo)
       core.info(`onReleaseCreated finished`)
     }
   } catch (error) {

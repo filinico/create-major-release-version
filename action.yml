@@ -29,6 +29,9 @@ inputs:
   SCRIPTS_PATH:
     description: "Path of the scripts files."
     required: true
+outputs:
+  RELEASE_INFO:
+    description: "Information about created release version."
 runs:
   using: 'node12'
   main: 'dist/index.js'
