@@ -16630,6 +16630,18 @@ const onReleaseCreated = (actionContext, jiraContext) => __awaiter(void 0, void 
     core.info(`prerelease:${prerelease}`);
     core.info(`id:${id}`);
     core.info(`revision:${sha}`);
+    if (!(0, version_1.verifyPreReleaseNumbering)(tag_name, tagPrefix)) {
+        throw new Error(`Tag ${tag_name} do not comply to correct versioning using prefix ${tagPrefix}. Workflow will not be executed.`);
+    }
+    if (!(0, version_1.checkPreReleaseMajorVersion)(tag_name)) {
+        throw new Error(`Tag ${tag_name} is not a major version (x.0.0). Workflow will not be executed.`);
+    }
+    if (!prerelease) {
+        throw new Error(`Release ${tag_name} is not a pre-release. Workflow will not be executed.`);
+    }
+    if (target_commitish.includes('release')) {
+        throw new Error(`The workflow is triggered on release branch ${target_commitish} instead of the default branch. Workflow will not be executed.`);
+    }
     const releaseVersion = (0, version_1.getVersionFromTag)(tagPrefix, tag_name);
     core.info(`Release version:${releaseVersion}`);
     const releaseBranch = `release/${releaseVersion}`;
@@ -16638,9 +16650,6 @@ const onReleaseCreated = (actionContext, jiraContext) => __awaiter(void 0, void 
     core.info(`Previous version:${previousVersion}`);
     const previousReleaseBranch = `release/${previousVersion}`;
     core.info(`Previous release branch:${previousReleaseBranch}`);
-    if (!tag_name.includes('.0.0')) {
-        throw new Error(`Release branch ${releaseBranch} is not a major version ending with .0.0`);
-    }
     yield (0, gitUtils_1.gotoDirectory)(workspace);
     yield (0, gitUtils_1.fetch)(target_commitish);
     yield (0, gitUtils_1.fetch)(previousReleaseBranch);
@@ -17536,7 +17545,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.applyNextVersion = exports.getNextVersion = exports.getPreviousVersion = exports.getVersionFromTag = void 0;
+exports.checkPreReleaseMajorVersion = exports.verifyPreReleaseNumbering = exports.applyNextVersion = exports.getNextVersion = exports.getPreviousVersion = exports.getVersionFromTag = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const fs_1 = __importDefault(__nccwpck_require__(5747));
 const path_1 = __importDefault(__nccwpck_require__(5622));
@@ -17564,6 +17573,13 @@ const applyNextVersion = (nextVersion, workspace, versionPath) => {
     core.info('version changed');
 };
 exports.applyNextVersion = applyNextVersion;
+const verifyPreReleaseNumbering = (tagName, tagPrefix) => {
+    const regex = `^${tagPrefix}[0-9]{1,2}.[0-9]{1,2}.[0-9]{1,4}-[a-z]+$`;
+    return !!tagName.match(new RegExp(regex, 'g'));
+};
+exports.verifyPreReleaseNumbering = verifyPreReleaseNumbering;
+const checkPreReleaseMajorVersion = (tagName) => tagName.includes('.0.0');
+exports.checkPreReleaseMajorVersion = checkPreReleaseMajorVersion;
 
 
 /***/ }),

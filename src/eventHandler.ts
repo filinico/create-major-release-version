@@ -13,9 +13,11 @@ import {
 } from './gitUtils'
 import {
   applyNextVersion,
+  checkPreReleaseMajorVersion,
   getNextVersion,
   getPreviousVersion,
-  getVersionFromTag
+  getVersionFromTag,
+  verifyPreReleaseNumbering
 } from './version'
 import {
   configureSettings,
@@ -67,6 +69,26 @@ export const onReleaseCreated = async (
   core.info(`prerelease:${prerelease}`)
   core.info(`id:${id}`)
   core.info(`revision:${sha}`)
+  if (!verifyPreReleaseNumbering(tag_name, tagPrefix)) {
+    throw new Error(
+      `Tag ${tag_name} do not comply to correct versioning using prefix ${tagPrefix}. Workflow will not be executed.`
+    )
+  }
+  if (!checkPreReleaseMajorVersion(tag_name)) {
+    throw new Error(
+      `Tag ${tag_name} is not a major version (x.0.0). Workflow will not be executed.`
+    )
+  }
+  if (!prerelease) {
+    throw new Error(
+      `Release ${tag_name} is not a pre-release. Workflow will not be executed.`
+    )
+  }
+  if ((target_commitish as string).includes('release')) {
+    throw new Error(
+      `The workflow is triggered on release branch ${target_commitish} instead of the default branch. Workflow will not be executed.`
+    )
+  }
   const releaseVersion = getVersionFromTag(tagPrefix, tag_name)
   core.info(`Release version:${releaseVersion}`)
   const releaseBranch = `release/${releaseVersion}`
@@ -75,11 +97,6 @@ export const onReleaseCreated = async (
   core.info(`Previous version:${previousVersion}`)
   const previousReleaseBranch = `release/${previousVersion}`
   core.info(`Previous release branch:${previousReleaseBranch}`)
-  if (!tag_name.includes('.0.0')) {
-    throw new Error(
-      `Release branch ${releaseBranch} is not a major version ending with .0.0`
-    )
-  }
   await gotoDirectory(workspace)
   await fetch(target_commitish)
   await fetch(previousReleaseBranch)
