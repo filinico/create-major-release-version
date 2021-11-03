@@ -16991,7 +16991,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.createVersion = exports.listProjectVersions = void 0;
+exports.createIssue = exports.searchIssues = exports.createVersion = exports.listProjectVersions = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const axios_1 = __importDefault(__nccwpck_require__(6545));
 const listProjectVersions = (context, projectKey) => __awaiter(void 0, void 0, void 0, function* () {
@@ -17030,6 +17030,54 @@ const createVersion = (context, version) => __awaiter(void 0, void 0, void 0, fu
     }
 });
 exports.createVersion = createVersion;
+const searchIssues = (context, jQLQuery, properties) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    const { subDomain, email, token } = context;
+    try {
+        core.info('request searchIssues');
+        const response = yield axios_1.default.post(`https://${subDomain}.atlassian.net/rest/api/3/search`, {
+            jql: jQLQuery,
+            maxResults: 100,
+            fieldsByKeys: true,
+            fields: properties,
+            startAt: 0
+        }, getAuthHeaders(email, token));
+        core.info(`searchIssues successful`);
+        let issues = [];
+        if (((_a = response === null || response === void 0 ? void 0 : response.data) === null || _a === void 0 ? void 0 : _a.issues) && ((_b = response === null || response === void 0 ? void 0 : response.data) === null || _b === void 0 ? void 0 : _b.issues.length) > 0) {
+            issues = response.data.issues;
+        }
+        return issues;
+    }
+    catch (error) {
+        core.error('error during searchIssues request');
+        if (axios_1.default.isAxiosError(error)) {
+            core.error(error.message);
+            core.error(JSON.stringify(error.toJSON));
+        }
+        return Promise.reject(error);
+    }
+});
+exports.searchIssues = searchIssues;
+const createIssue = (context, data) => __awaiter(void 0, void 0, void 0, function* () {
+    const { subDomain, email, token } = context;
+    try {
+        core.info('request createIssue');
+        core.info(`createIssue:${JSON.stringify(data)}`);
+        const response = yield axios_1.default.post(`https://${subDomain}.atlassian.net/rest/api/3/issue`, data, getAuthHeaders(email, token));
+        core.info(`createIssue successful`);
+        return response === null || response === void 0 ? void 0 : response.data;
+    }
+    catch (error) {
+        core.error('error during createIssue request');
+        if (axios_1.default.isAxiosError(error)) {
+            core.error(error.message);
+            core.error(JSON.stringify(error.toJSON));
+        }
+        return Promise.reject(error);
+    }
+});
+exports.createIssue = createIssue;
 const getAuthHeaders = (email, token) => {
     return {
         headers: {
@@ -17076,22 +17124,27 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.createIfNotExistsJiraVersion = exports.configureJira = void 0;
+exports.getMasterTicketKey = exports.createMasterTicket = exports.createIfNotExistsJiraVersion = exports.configureJira = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const jiraApi_1 = __nccwpck_require__(929);
 const configureJira = (jiraContext, releaseVersion, tagPrefix) => __awaiter(void 0, void 0, void 0, function* () {
     const majorVersion = `${tagPrefix}${releaseVersion}.0`;
     yield createVersionsOfProjects(jiraContext, majorVersion);
+    const { masterProjectId, masterProjectKey, masterIssueType } = jiraContext;
+    const masterTicketVersion = yield (0, exports.createIfNotExistsJiraVersion)(jiraContext, majorVersion, parseInt(masterProjectId), masterProjectKey);
+    if (masterTicketVersion && masterTicketVersion.id) {
+        core.info(`request creation of master ticket version ${majorVersion} with id  ${masterTicketVersion.id}`);
+        yield (0, exports.createMasterTicket)(majorVersion, masterIssueType, masterProjectId, masterTicketVersion.id, jiraContext);
+    }
 });
 exports.configureJira = configureJira;
 const createVersionsOfProjects = (jiraContext, majorVersion) => __awaiter(void 0, void 0, void 0, function* () {
-    const { projectsIds, projectsKeys, masterProjectId, masterProjectKey } = jiraContext;
+    const { projectsIds, projectsKeys } = jiraContext;
     for (let i = 0; i < projectsKeys.length; i++) {
         const projectId = projectsIds[i];
         const projectKey = projectsKeys[i];
         yield (0, exports.createIfNotExistsJiraVersion)(jiraContext, majorVersion, parseInt(projectId), projectKey);
     }
-    yield (0, exports.createIfNotExistsJiraVersion)(jiraContext, majorVersion, parseInt(masterProjectId), masterProjectKey);
 });
 const createIfNotExistsJiraVersion = (context, fixVersion, projectId, projectKey) => __awaiter(void 0, void 0, void 0, function* () {
     const versions = yield (0, jiraApi_1.listProjectVersions)(context, projectKey);
@@ -17115,6 +17168,72 @@ const createIfNotExistsJiraVersion = (context, fixVersion, projectId, projectKey
     return version;
 });
 exports.createIfNotExistsJiraVersion = createIfNotExistsJiraVersion;
+const createMasterTicket = (version, masterIssueType, masterProjectId, masterTicketVersionId, jiraContext) => __awaiter(void 0, void 0, void 0, function* () {
+    const masterTicket = yield (0, exports.getMasterTicketKey)(jiraContext, version);
+    if (!masterTicket) {
+        yield (0, jiraApi_1.createIssue)(jiraContext, {
+            update: {},
+            fields: {
+                summary: `${version} Master Ticket`,
+                issuetype: {
+                    id: masterIssueType
+                },
+                project: {
+                    id: masterProjectId
+                },
+                description: {
+                    type: 'doc',
+                    version: 1,
+                    content: [
+                        {
+                            type: 'paragraph',
+                            content: [
+                                {
+                                    text: 'Not released yet.',
+                                    type: 'text'
+                                }
+                            ]
+                        }
+                    ]
+                },
+                fixVersions: [
+                    {
+                        id: masterTicketVersionId
+                    }
+                ],
+                customfield_23944: {
+                    value: 'Major'
+                },
+                customfield_23710: {
+                    value: 'Power App',
+                    child: {
+                        value: 'Treasury Management (CTM)'
+                    }
+                },
+                customfield_21603: {
+                    value: 'Treasury Management (CTM)'
+                },
+                customfield_12803: {
+                    id: masterTicketVersionId
+                }
+            }
+        });
+    }
+});
+exports.createMasterTicket = createMasterTicket;
+const getMasterTicketKey = (context, fixVersion) => __awaiter(void 0, void 0, void 0, function* () {
+    const { masterProjectKey } = context;
+    const masterTicketQuery = `project = ${masterProjectKey} AND fixVersion in (${fixVersion})`;
+    core.info(`masterTicketQuery:[${masterTicketQuery}]`);
+    const issues = yield (0, jiraApi_1.searchIssues)(context, masterTicketQuery, ['summary']);
+    let masterTicketIssueKey = null;
+    if (issues && issues.length === 1) {
+        masterTicketIssueKey = issues[0].key;
+    }
+    core.info(`masterTicketIssueKey:${masterTicketIssueKey}`);
+    return masterTicketIssueKey;
+});
+exports.getMasterTicketKey = getMasterTicketKey;
 
 
 /***/ }),
@@ -17201,7 +17320,8 @@ function run() {
                 }),
                 masterProjectKey: core.getInput('JIRA_MASTER_PROJECT_KEY', {
                     required: true
-                })
+                }),
+                masterIssueType: core.getInput('JIRA_MASTER_ISSUE_TYPE', { required: true })
             };
             core.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`);
             core.info(`GITHUB context action=${gitHubContext.context.payload.action}`);

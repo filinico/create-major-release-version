@@ -2,8 +2,10 @@ import * as core from '@actions/core'
 import {
   JiraContext,
   JiraVersion,
+  createIssue,
   createVersion,
-  listProjectVersions
+  listProjectVersions,
+  searchIssues
 } from './jiraApi'
 
 export const configureJira = async (
@@ -13,14 +15,33 @@ export const configureJira = async (
 ): Promise<void> => {
   const majorVersion = `${tagPrefix}${releaseVersion}.0`
   await createVersionsOfProjects(jiraContext, majorVersion)
+  const {masterProjectId, masterProjectKey, masterIssueType} = jiraContext
+  const masterTicketVersion = await createIfNotExistsJiraVersion(
+    jiraContext,
+    majorVersion,
+    parseInt(masterProjectId),
+    masterProjectKey
+  )
+
+  if (masterTicketVersion && masterTicketVersion.id) {
+    core.info(
+      `request creation of master ticket version ${majorVersion} with id  ${masterTicketVersion.id}`
+    )
+    await createMasterTicket(
+      majorVersion,
+      masterIssueType,
+      masterProjectId,
+      masterTicketVersion.id,
+      jiraContext
+    )
+  }
 }
 
 const createVersionsOfProjects = async (
   jiraContext: JiraContext,
   majorVersion: string
 ): Promise<void> => {
-  const {projectsIds, projectsKeys, masterProjectId, masterProjectKey} =
-    jiraContext
+  const {projectsIds, projectsKeys} = jiraContext
   for (let i = 0; i < projectsKeys.length; i++) {
     const projectId = projectsIds[i]
     const projectKey = projectsKeys[i]
@@ -31,12 +52,6 @@ const createVersionsOfProjects = async (
       projectKey
     )
   }
-  await createIfNotExistsJiraVersion(
-    jiraContext,
-    majorVersion,
-    parseInt(masterProjectId),
-    masterProjectKey
-  )
 }
 
 export const createIfNotExistsJiraVersion = async (
@@ -63,4 +78,79 @@ export const createIfNotExistsJiraVersion = async (
     core.info(`version found:[${version.id}]`)
   }
   return version
+}
+
+export const createMasterTicket = async (
+  version: string,
+  masterIssueType: string,
+  masterProjectId: string,
+  masterTicketVersionId: string,
+  jiraContext: JiraContext
+): Promise<void> => {
+  const masterTicket = await getMasterTicketKey(jiraContext, version)
+  if (!masterTicket) {
+    await createIssue(jiraContext, {
+      update: {},
+      fields: {
+        summary: `${version} Master Ticket`,
+        issuetype: {
+          id: masterIssueType
+        },
+        project: {
+          id: masterProjectId
+        },
+        description: {
+          type: 'doc',
+          version: 1,
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                {
+                  text: 'Not released yet.',
+                  type: 'text'
+                }
+              ]
+            }
+          ]
+        },
+        fixVersions: [
+          {
+            id: masterTicketVersionId
+          }
+        ],
+        customfield_23944: {
+          value: 'Major'
+        },
+        customfield_23710: {
+          value: 'Power App',
+          child: {
+            value: 'Treasury Management (CTM)'
+          }
+        },
+        customfield_21603: {
+          value: 'Treasury Management (CTM)'
+        },
+        customfield_12803: {
+          id: masterTicketVersionId
+        }
+      }
+    })
+  }
+}
+
+export const getMasterTicketKey = async (
+  context: JiraContext,
+  fixVersion: string
+): Promise<string | null> => {
+  const {masterProjectKey} = context
+  const masterTicketQuery = `project = ${masterProjectKey} AND fixVersion in (${fixVersion})`
+  core.info(`masterTicketQuery:[${masterTicketQuery}]`)
+  const issues = await searchIssues(context, masterTicketQuery, ['summary'])
+  let masterTicketIssueKey: string | null = null
+  if (issues && issues.length === 1) {
+    masterTicketIssueKey = issues[0].key
+  }
+  core.info(`masterTicketIssueKey:${masterTicketIssueKey}`)
+  return masterTicketIssueKey
 }
