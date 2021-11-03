@@ -243,6 +243,7 @@ const configureNextVersion = async (
   await configureScripts(
     currentDbVersion,
     nextDbVersion,
+    nextArtifactVersion,
     workspace,
     scriptsPath
   )

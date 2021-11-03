@@ -16731,7 +16731,7 @@ const configureNextVersion = (actionContext, releaseVersion, previousVersion, re
     const { nextDbVersion, currentDbVersion, nextArtifactVersion } = (0, settings_1.getVersionsFromSettings)(workspace, settingsPath, target_commitish);
     (0, version_1.applyNextVersion)(nextArtifactVersion, workspace, versionPath);
     core.info(`Next version modified to ${nextDbVersion}`);
-    yield (0, scripts_1.configureScripts)(currentDbVersion, nextDbVersion, workspace, scriptsPath);
+    yield (0, scripts_1.configureScripts)(currentDbVersion, nextDbVersion, nextArtifactVersion, workspace, scriptsPath);
     core.info(`Scripts added for next version ${nextDbVersion}`);
     yield (0, gitUtils_1.commit)(`configure next version ${nextVersion} on ${target_commitish}`);
     core.info(`Next version changes committed`);
@@ -17387,25 +17387,26 @@ const core = __importStar(__nccwpck_require__(2186));
 const gitUtils_1 = __nccwpck_require__(4755);
 const fs_1 = __importDefault(__nccwpck_require__(5747));
 const path_1 = __importDefault(__nccwpck_require__(5622));
-const configureScripts = (currentDbVersion, nextDbVersion, workspace, scriptsPath) => __awaiter(void 0, void 0, void 0, function* () {
+const configureScripts = (currentDbVersion, nextDbVersion, nextArtifactVersion, workspace, scriptsPath) => __awaiter(void 0, void 0, void 0, function* () {
     const copyFrom = path_1.default.resolve(workspace, scriptsPath, 'templates');
     const copyTo = path_1.default.resolve(workspace, scriptsPath, `${nextDbVersion}`);
     yield (0, gitUtils_1.copyDirectory)(copyFrom, copyTo);
     const files = (0, exports.listFiles)(copyTo);
     for (const file of files) {
-        (0, exports.applyVersionsIntoFile)(file, currentDbVersion, nextDbVersion);
+        (0, exports.applyVersionsIntoFile)(file, currentDbVersion, nextDbVersion, nextArtifactVersion);
         const shorterVersion = nextDbVersion.replace('.0.', '');
         const filename = file.replace('XX', shorterVersion);
         yield (0, gitUtils_1.renameFile)(file, filename);
     }
 });
 exports.configureScripts = configureScripts;
-const applyVersionsIntoFile = (scriptPath, currentDbVersion, nextDbVersion) => {
+const applyVersionsIntoFile = (scriptPath, currentDbVersion, nextDbVersion, nextArtifactVersion) => {
     core.info(`script Path:${scriptPath}`);
     const filePath = path_1.default.resolve(scriptPath);
     const rawData = fs_1.default.readFileSync(filePath, 'utf8');
     let script = rawData.replace(/{{CURRENT_DB_VERSION}}/g, `'${currentDbVersion}'`);
     script = script.replace(/{{NEXT_DB_VERSION}}/g, `'${nextDbVersion}'`);
+    script = script.replace(/{{NEXT_APP_VERSION}}/g, `'${nextArtifactVersion}'`);
     fs_1.default.writeFileSync(filePath, script);
 };
 exports.applyVersionsIntoFile = applyVersionsIntoFile;

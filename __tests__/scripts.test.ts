@@ -34,13 +34,19 @@ test('apply versions into file', async () => {
   const rawData = fs.readFileSync(templatePath, 'utf8')
   const filePath = path.resolve(scriptsPath, 'script.sql')
   fs.writeFileSync(filePath, rawData)
-  applyVersionsIntoFile(filePath, 'v.0.010', 'v.0.011')
+  applyVersionsIntoFile(filePath, 'v.0.010', 'v.0.011', 'v.110')
   const newData = fs.readFileSync(filePath, 'utf8')
   expect(newData).toMatchSnapshot()
 })
 
 test('configure scripts', async () => {
-  await configureScripts('v.0.010', 'v.0.011', workspace, directoryPath)
+  await configureScripts(
+    'v.0.010',
+    'v.0.011',
+    'v.110',
+    workspace,
+    directoryPath
+  )
   const files = listFiles(path.resolve(scriptsPath, 'v.0.011'))
   expect(files).toHaveLength(2)
   for (const file of files) {
