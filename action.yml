@@ -50,6 +50,9 @@ inputs:
   JIRA_MASTER_PROJECT_KEY:
     description: "master project key jira cloud"
     required: true
+  JIRA_MASTER_ISSUE_TYPE:
+    description: "master issue type id from jira cloud"
+    required: true
 outputs:
   RELEASE_INFO:
     description: "Information about created release version."
