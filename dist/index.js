@@ -17335,11 +17335,14 @@ function run() {
             core.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`);
             core.info(`GITHUB context action=${gitHubContext.context.payload.action}`);
             if (process.env.GITHUB_EVENT_NAME === 'release' &&
-                github.context.payload.action === 'created') {
+                github.context.payload.action === 'prereleased') {
                 core.info(`start onReleaseCreated`);
                 const releaseInfo = yield (0, eventHandler_1.onReleaseCreated)(gitHubContext, jiraContext);
                 core.setOutput('RELEASE_INFO', releaseInfo);
                 core.info(`onReleaseCreated finished`);
+            }
+            else {
+                core.error(`Trigger event type not supported. Can only react on release event with type prereleased.`);
             }
         }
         catch (error) {
