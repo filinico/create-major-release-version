@@ -16630,6 +16630,18 @@ const onReleaseCreated = (actionContext, jiraContext) => __awaiter(void 0, void 
     core.info(`prerelease:${prerelease}`);
     core.info(`id:${id}`);
     core.info(`revision:${sha}`);
+    if (!(0, version_1.verifyPreReleaseNumbering)(tag_name, tagPrefix)) {
+        throw new Error(`Tag ${tag_name} do not comply to correct versioning using prefix ${tagPrefix}. Workflow will not be executed.`);
+    }
+    if (!(0, version_1.checkPreReleaseMajorVersion)(tag_name)) {
+        throw new Error(`Tag ${tag_name} is not a major version (x.0.0). Workflow will not be executed.`);
+    }
+    if (!prerelease) {
+        throw new Error(`Release ${tag_name} is not a pre-release. Workflow will not be executed.`);
+    }
+    if (target_commitish.includes('release')) {
+        throw new Error(`The workflow is triggered on release branch ${target_commitish} instead of the default branch. Workflow will not be executed.`);
+    }
     const releaseVersion = (0, version_1.getVersionFromTag)(tagPrefix, tag_name);
     core.info(`Release version:${releaseVersion}`);
     const releaseBranch = `release/${releaseVersion}`;
@@ -16638,9 +16650,6 @@ const onReleaseCreated = (actionContext, jiraContext) => __awaiter(void 0, void 
     core.info(`Previous version:${previousVersion}`);
     const previousReleaseBranch = `release/${previousVersion}`;
     core.info(`Previous release branch:${previousReleaseBranch}`);
-    if (!tag_name.includes('.0.0')) {
-        throw new Error(`Release branch ${releaseBranch} is not a major version ending with .0.0`);
-    }
     yield (0, gitUtils_1.gotoDirectory)(workspace);
     yield (0, gitUtils_1.fetch)(target_commitish);
     yield (0, gitUtils_1.fetch)(previousReleaseBranch);
@@ -16731,7 +16740,7 @@ const configureNextVersion = (actionContext, releaseVersion, previousVersion, re
     const { nextDbVersion, currentDbVersion, nextArtifactVersion } = (0, settings_1.getVersionsFromSettings)(workspace, settingsPath, target_commitish);
     (0, version_1.applyNextVersion)(nextArtifactVersion, workspace, versionPath);
     core.info(`Next version modified to ${nextDbVersion}`);
-    yield (0, scripts_1.configureScripts)(currentDbVersion, nextDbVersion, workspace, scriptsPath);
+    yield (0, scripts_1.configureScripts)(currentDbVersion, nextDbVersion, nextArtifactVersion, workspace, scriptsPath);
     core.info(`Scripts added for next version ${nextDbVersion}`);
     yield (0, gitUtils_1.commit)(`configure next version ${nextVersion} on ${target_commitish}`);
     core.info(`Next version changes committed`);
@@ -17326,11 +17335,14 @@ function run() {
             core.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`);
             core.info(`GITHUB context action=${gitHubContext.context.payload.action}`);
             if (process.env.GITHUB_EVENT_NAME === 'release' &&
-                github.context.payload.action === 'created') {
+                github.context.payload.action === 'prereleased') {
                 core.info(`start onReleaseCreated`);
                 const releaseInfo = yield (0, eventHandler_1.onReleaseCreated)(gitHubContext, jiraContext);
                 core.setOutput('RELEASE_INFO', releaseInfo);
                 core.info(`onReleaseCreated finished`);
+            }
+            else {
+                core.error(`Trigger event type not supported. Can only react on release event with type prereleased.`);
             }
         }
         catch (error) {
@@ -17387,25 +17399,26 @@ const core = __importStar(__nccwpck_require__(2186));
 const gitUtils_1 = __nccwpck_require__(4755);
 const fs_1 = __importDefault(__nccwpck_require__(5747));
 const path_1 = __importDefault(__nccwpck_require__(5622));
-const configureScripts = (currentDbVersion, nextDbVersion, workspace, scriptsPath) => __awaiter(void 0, void 0, void 0, function* () {
+const configureScripts = (currentDbVersion, nextDbVersion, nextArtifactVersion, workspace, scriptsPath) => __awaiter(void 0, void 0, void 0, function* () {
     const copyFrom = path_1.default.resolve(workspace, scriptsPath, 'templates');
     const copyTo = path_1.default.resolve(workspace, scriptsPath, `${nextDbVersion}`);
     yield (0, gitUtils_1.copyDirectory)(copyFrom, copyTo);
     const files = (0, exports.listFiles)(copyTo);
     for (const file of files) {
-        (0, exports.applyVersionsIntoFile)(file, currentDbVersion, nextDbVersion);
+        (0, exports.applyVersionsIntoFile)(file, currentDbVersion, nextDbVersion, nextArtifactVersion);
         const shorterVersion = nextDbVersion.replace('.0.', '');
         const filename = file.replace('XX', shorterVersion);
         yield (0, gitUtils_1.renameFile)(file, filename);
     }
 });
 exports.configureScripts = configureScripts;
-const applyVersionsIntoFile = (scriptPath, currentDbVersion, nextDbVersion) => {
+const applyVersionsIntoFile = (scriptPath, currentDbVersion, nextDbVersion, nextArtifactVersion) => {
     core.info(`script Path:${scriptPath}`);
     const filePath = path_1.default.resolve(scriptPath);
     const rawData = fs_1.default.readFileSync(filePath, 'utf8');
     let script = rawData.replace(/{{CURRENT_DB_VERSION}}/g, `'${currentDbVersion}'`);
     script = script.replace(/{{NEXT_DB_VERSION}}/g, `'${nextDbVersion}'`);
+    script = script.replace(/{{NEXT_APP_VERSION}}/g, `'${nextArtifactVersion}'`);
     fs_1.default.writeFileSync(filePath, script);
 };
 exports.applyVersionsIntoFile = applyVersionsIntoFile;
@@ -17535,7 +17548,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.applyNextVersion = exports.getNextVersion = exports.getPreviousVersion = exports.getVersionFromTag = void 0;
+exports.checkPreReleaseMajorVersion = exports.verifyPreReleaseNumbering = exports.applyNextVersion = exports.getNextVersion = exports.getPreviousVersion = exports.getVersionFromTag = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const fs_1 = __importDefault(__nccwpck_require__(5747));
 const path_1 = __importDefault(__nccwpck_require__(5622));
@@ -17563,6 +17576,13 @@ const applyNextVersion = (nextVersion, workspace, versionPath) => {
     core.info('version changed');
 };
 exports.applyNextVersion = applyNextVersion;
+const verifyPreReleaseNumbering = (tagName, tagPrefix) => {
+    const regex = `^${tagPrefix}[0-9]{1,2}.[0-9]{1,2}.[0-9]{1,4}-[a-z]+$`;
+    return !!tagName.match(new RegExp(regex, 'g'));
+};
+exports.verifyPreReleaseNumbering = verifyPreReleaseNumbering;
+const checkPreReleaseMajorVersion = (tagName) => tagName.includes('.0.0');
+exports.checkPreReleaseMajorVersion = checkPreReleaseMajorVersion;
 
 
 /***/ }),

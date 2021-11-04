@@ -6,6 +6,7 @@ import path from 'path'
 export const configureScripts = async (
   currentDbVersion: string,
   nextDbVersion: string,
+  nextArtifactVersion: string,
   workspace: string,
   scriptsPath: string
 ): Promise<void> => {
@@ -14,7 +15,12 @@ export const configureScripts = async (
   await copyDirectory(copyFrom, copyTo)
   const files = listFiles(copyTo)
   for (const file of files) {
-    applyVersionsIntoFile(file, currentDbVersion, nextDbVersion)
+    applyVersionsIntoFile(
+      file,
+      currentDbVersion,
+      nextDbVersion,
+      nextArtifactVersion
+    )
     const shorterVersion = nextDbVersion.replace('.0.', '')
     const filename = file.replace('XX', shorterVersion)
     await renameFile(file, filename)
@@ -24,7 +30,8 @@ export const configureScripts = async (
 export const applyVersionsIntoFile = (
   scriptPath: string,
   currentDbVersion: string,
-  nextDbVersion: string
+  nextDbVersion: string,
+  nextArtifactVersion: string
 ): void => {
   core.info(`script Path:${scriptPath}`)
   const filePath = path.resolve(scriptPath)
@@ -34,6 +41,7 @@ export const applyVersionsIntoFile = (
     `'${currentDbVersion}'`
   )
   script = script.replace(/{{NEXT_DB_VERSION}}/g, `'${nextDbVersion}'`)
+  script = script.replace(/{{NEXT_APP_VERSION}}/g, `'${nextArtifactVersion}'`)
   fs.writeFileSync(filePath, script)
 }
 

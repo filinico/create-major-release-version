@@ -58,12 +58,16 @@ async function run(): Promise<void> {
     core.info(`GITHUB context action=${gitHubContext.context.payload.action}`)
     if (
       process.env.GITHUB_EVENT_NAME === 'release' &&
-      github.context.payload.action === 'created'
+      github.context.payload.action === 'prereleased'
     ) {
       core.info(`start onReleaseCreated`)
       const releaseInfo = await onReleaseCreated(gitHubContext, jiraContext)
       core.setOutput('RELEASE_INFO', releaseInfo)
       core.info(`onReleaseCreated finished`)
+    } else {
+      core.error(
+        `Trigger event type not supported. Can only react on release event with type prereleased.`
+      )
     }
   } catch (error) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
