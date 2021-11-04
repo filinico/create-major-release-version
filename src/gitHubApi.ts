@@ -45,3 +45,43 @@ export const mergePullRequest = async (
   })
   return merged
 }
+
+export const createProject = async (
+  actionContext: GitHubContext,
+  name: string,
+  description: string
+): Promise<number> => {
+  const {octokit, context} = actionContext
+  const {
+    repo: {repo, owner}
+  } = context
+  const {
+    data: {id}
+  } = await octokit.rest.projects.createForRepo({
+    owner,
+    repo,
+    name,
+    body: description
+  })
+  return id
+}
+
+export const createProjectColumn = async (
+  actionContext: GitHubContext,
+  projectId: number,
+  name: string
+): Promise<number> => {
+  const {octokit, context} = actionContext
+  const {
+    repo: {repo, owner}
+  } = context
+  const {
+    data: {id}
+  } = await octokit.rest.projects.createColumn({
+    owner,
+    repo,
+    project_id: projectId,
+    name
+  })
+  return id
+}

@@ -30,6 +30,7 @@ import {mergePullRequest, openPullRequest} from './gitHubApi'
 import {Context} from '@actions/github/lib/context'
 import {JiraContext} from './jiraApi'
 import {configureJira} from './jiraUpdate'
+import {configureProjects} from './projects'
 import {configureScripts} from './scripts'
 type GitHub = ReturnType<typeof github.getOctokit>
 
@@ -182,6 +183,7 @@ const createNewMajorVersion = async (
     target_commitish
   )
   configureWorkflow(releaseVersion, workspace, workflowPath, target_commitish)
+  await configureProjects(actionContext, releaseVersion)
   await commit(`setup new version ${releaseVersion}`)
   core.info(`changes committed`)
   await push()

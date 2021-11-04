@@ -16621,6 +16621,7 @@ const settings_1 = __nccwpck_require__(1685);
 const workflows_1 = __nccwpck_require__(4949);
 const gitHubApi_1 = __nccwpck_require__(3562);
 const jiraUpdate_1 = __nccwpck_require__(556);
+const projects_1 = __nccwpck_require__(5827);
 const scripts_1 = __nccwpck_require__(7512);
 const onReleaseCreated = (actionContext, jiraContext) => __awaiter(void 0, void 0, void 0, function* () {
     const { context, workspace, tagPrefix, gitEmail, gitUser, settingsPath } = actionContext;
@@ -16693,6 +16694,7 @@ const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch, pre
     (0, settings_1.writeCodeOwners)(workspace, codeOwners);
     (0, settings_1.configureSettings)(releaseVersion, workspace, settingsPath, versionPrefix, target_commitish);
     (0, workflows_1.configureWorkflow)(releaseVersion, workspace, workflowPath, target_commitish);
+    yield (0, projects_1.configureProjects)(actionContext, releaseVersion);
     yield (0, gitUtils_1.commit)(`setup new version ${releaseVersion}`);
     core.info(`changes committed`);
     yield (0, gitUtils_1.push)();
@@ -16777,7 +16779,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.mergePullRequest = exports.openPullRequest = void 0;
+exports.createProjectColumn = exports.createProject = exports.mergePullRequest = exports.openPullRequest = void 0;
 const openPullRequest = (actionContext, title, body, sourceBranch, targetBranch) => __awaiter(void 0, void 0, void 0, function* () {
     const { octokit, context } = actionContext;
     const { repo: { repo, owner } } = context;
@@ -16807,6 +16809,30 @@ const mergePullRequest = (actionContext, pullRequestId, mergeCommitMessage, merg
     return merged;
 });
 exports.mergePullRequest = mergePullRequest;
+const createProject = (actionContext, name, description) => __awaiter(void 0, void 0, void 0, function* () {
+    const { octokit, context } = actionContext;
+    const { repo: { repo, owner } } = context;
+    const { data: { id } } = yield octokit.rest.projects.createForRepo({
+        owner,
+        repo,
+        name,
+        body: description
+    });
+    return id;
+});
+exports.createProject = createProject;
+const createProjectColumn = (actionContext, projectId, name) => __awaiter(void 0, void 0, void 0, function* () {
+    const { octokit, context } = actionContext;
+    const { repo: { repo, owner } } = context;
+    const { data: { id } } = yield octokit.rest.projects.createColumn({
+        owner,
+        repo,
+        project_id: projectId,
+        name
+    });
+    return id;
+});
+exports.createProjectColumn = createProjectColumn;
 
 
 /***/ }),
@@ -17353,6 +17379,45 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 5827:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.configureProjects = void 0;
+const gitHubApi_1 = __nccwpck_require__(3562);
+const configureProjects = (actionContext, releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
+    yield createProjectBoard(actionContext, releaseVersion);
+    // TODO: configure projects workflows
+});
+exports.configureProjects = configureProjects;
+const createProjectBoard = (actionContext, releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
+    const projectName = `${releaseVersion} Release Tracker`;
+    const projectDescription = `Progress overview of pull requests targeting the release branch ${releaseVersion}`;
+    const projectId = yield (0, gitHubApi_1.createProject)(actionContext, projectName, projectDescription);
+    const inProgressColumnId = yield (0, gitHubApi_1.createProjectColumn)(actionContext, projectId, 'In progress');
+    yield (0, gitHubApi_1.createProjectColumn)(actionContext, projectId, 'Review in progress');
+    yield (0, gitHubApi_1.createProjectColumn)(actionContext, projectId, 'Reviewer approved');
+    const doneColumnId = yield (0, gitHubApi_1.createProjectColumn)(actionContext, projectId, 'Done');
+    return {
+        inProgressColumnId,
+        doneColumnId
+    };
+});
 
 
 /***/ }),
