@@ -25,7 +25,10 @@ import {
   loadCodeOwners,
   writeCodeOwners
 } from './settings'
-import {configureWorkflow, configureWorkflowPreviousRelease} from './workflows'
+import {
+  configureSyncWorkflow,
+  configureSyncWorkflowPreviousRelease
+} from './workflows'
 import {mergePullRequest, openPullRequest} from './gitHubApi'
 import {Context} from '@actions/github/lib/context'
 import {JiraContext} from './jiraApi'
@@ -46,6 +49,7 @@ export interface GitHubContext {
   workflowPath: string
   versionPath: string
   scriptsPath: string
+  assignProjectPath: string
 }
 
 interface ReleaseInfo {
@@ -182,7 +186,12 @@ const createNewMajorVersion = async (
     versionPrefix,
     target_commitish
   )
-  configureWorkflow(releaseVersion, workspace, workflowPath, target_commitish)
+  configureSyncWorkflow(
+    releaseVersion,
+    workspace,
+    workflowPath,
+    target_commitish
+  )
   await configureProjects(actionContext, releaseVersion)
   await commit(`setup new version ${releaseVersion}`)
   core.info(`changes committed`)
@@ -203,7 +212,7 @@ const configurePreviousVersion = async (
   core.info(`fetch successful`)
   const configurationBranch = `automation/configure-previous-version-${previousVersion}`
   await createBranch(configurationBranch, previousReleaseBranch)
-  configureWorkflowPreviousRelease(releaseVersion, workspace, workflowPath)
+  configureSyncWorkflowPreviousRelease(releaseVersion, workspace, workflowPath)
   await commit(`configure new version ${releaseVersion} on ${previousVersion}`)
   core.info(`changes committed`)
   await push()

@@ -1,5 +1,6 @@
 import {createProject, createProjectColumn} from './gitHubApi'
 import {GitHubContext} from './eventHandler'
+import {configureAssignProjectWorkflow} from './workflows'
 
 export interface ProjectBoard {
   inProgressColumnId: number
@@ -10,8 +11,18 @@ export const configureProjects = async (
   actionContext: GitHubContext,
   releaseVersion: string
 ): Promise<void> => {
-  await createProjectBoard(actionContext, releaseVersion)
-  // TODO: configure projects workflows
+  const {inProgressColumnId} = await createProjectBoard(
+    actionContext,
+    releaseVersion
+  )
+  const {workspace, assignProjectPath} = actionContext
+  configureAssignProjectWorkflow(
+    workspace,
+    assignProjectPath,
+    releaseVersion,
+    inProgressColumnId.toString()
+  )
+  // TODO: configure workflow archive project cards
 }
 
 const createProjectBoard = async (

@@ -119,6 +119,17 @@ export const removeDirectory = async (directory: string): Promise<void> => {
   }
 }
 
+export const removeFile = async (filePath: string): Promise<void> => {
+  let command = `rm ${filePath}`
+  if (os.platform() === 'win32') {
+    command = `del /q ${filePath}`
+  }
+  const {stderr} = await exec(command)
+  if (stderr) {
+    core.error(stderr.toString())
+  }
+}
+
 export const renameFile = async (
   oldFile: string,
   newFile: string
