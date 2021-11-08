@@ -17336,6 +17336,9 @@ function run() {
             const assignProjectPath = core.getInput('ASSIGN_PROJECT_FILE', {
                 required: true
             });
+            const archiveConfigPath = core.getInput('ARCHIVE_CONFIG_FILE', {
+                required: true
+            });
             core.info(`GITHUB workspace=${process.env.GITHUB_WORKSPACE}`);
             if (process.env.GITHUB_WORKSPACE === undefined) {
                 throw new Error('GITHUB_WORKSPACE not defined.');
@@ -17353,7 +17356,8 @@ function run() {
                 workflowPath,
                 versionPath,
                 scriptsPath,
-                assignProjectPath
+                assignProjectPath,
+                archiveConfigPath
             };
             const jiraContext = {
                 subDomain: core.getInput('JIRA_SUBDOMAIN', { required: true }),
@@ -17414,13 +17418,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.configureProjects = void 0;
-const gitHubApi_1 = __nccwpck_require__(3562);
 const workflows_1 = __nccwpck_require__(4949);
+const gitHubApi_1 = __nccwpck_require__(3562);
 const configureProjects = (actionContext, releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
-    const { inProgressColumnId } = yield createProjectBoard(actionContext, releaseVersion);
-    const { workspace, assignProjectPath } = actionContext;
+    const { inProgressColumnId, doneColumnId } = yield createProjectBoard(actionContext, releaseVersion);
+    const { workspace, assignProjectPath, archiveConfigPath } = actionContext;
     (0, workflows_1.configureAssignProjectWorkflow)(workspace, assignProjectPath, releaseVersion, inProgressColumnId.toString());
-    // TODO: configure workflow archive project cards
+    (0, workflows_1.configureArchiveConfig)(workspace, archiveConfigPath, releaseVersion, doneColumnId);
 });
 exports.configureProjects = configureProjects;
 const createProjectBoard = (actionContext, releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
@@ -17698,7 +17702,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.configureAssignProjectWorkflow = exports.configureSyncWorkflowPreviousRelease = exports.configureSyncWorkflow = void 0;
+exports.configureArchiveConfig = exports.configureAssignProjectWorkflow = exports.configureSyncWorkflowPreviousRelease = exports.configureSyncWorkflow = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const yaml = __importStar(__nccwpck_require__(1917));
 const fs_1 = __importDefault(__nccwpck_require__(5747));
@@ -17729,6 +17733,13 @@ const configureAssignProjectWorkflow = (workspace, workflowPath, releaseVersion,
     writeWorkflow(workflow, workspace, workflowPath);
 };
 exports.configureAssignProjectWorkflow = configureAssignProjectWorkflow;
+const configureArchiveConfig = (workspace, configPath, releaseVersion, projectColumnId) => {
+    const config = loadWorkflow(workspace, configPath);
+    config.projectsDoneColumns[`refs/heads/production/${releaseVersion}`] =
+        projectColumnId;
+    writeWorkflow(config, workspace, configPath);
+};
+exports.configureArchiveConfig = configureArchiveConfig;
 const loadWorkflow = (workspace, workflowPath) => {
     core.info(`workflowPath:${workflowPath}`);
     const filePath = path_1.default.resolve(workspace, workflowPath);

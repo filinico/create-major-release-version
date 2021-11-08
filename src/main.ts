@@ -16,6 +16,9 @@ async function run(): Promise<void> {
     const assignProjectPath = core.getInput('ASSIGN_PROJECT_FILE', {
       required: true
     })
+    const archiveConfigPath = core.getInput('ARCHIVE_CONFIG_FILE', {
+      required: true
+    })
 
     core.info(`GITHUB workspace=${process.env.GITHUB_WORKSPACE}`)
 
@@ -36,7 +39,8 @@ async function run(): Promise<void> {
       workflowPath,
       versionPath,
       scriptsPath,
-      assignProjectPath
+      assignProjectPath,
+      archiveConfigPath
     }
 
     const jiraContext = {

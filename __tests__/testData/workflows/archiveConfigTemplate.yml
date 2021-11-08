@@ -1,0 +1,4 @@
+projectsDoneColumns: !!map
+  refs/heads/production/10.0: 12345678
+  refs/heads/production/11.0: 87654321
+  refs/heads/production/12.0: 54321678

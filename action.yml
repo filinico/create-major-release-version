@@ -32,6 +32,9 @@ inputs:
   ASSIGN_PROJECT_FILE:
     description: "Path of the assign project workflow file."
     required: true
+  ARCHIVE_CONFIG_FILE:
+    description: "Path of the archive config file."
+    required: true
   JIRA_SUBDOMAIN:
     description: "subdomain to jira cloud"
     required: true

@@ -1,6 +1,7 @@
 import path from 'path'
 import fs from 'fs'
 import {
+  configureArchiveConfig,
   configureAssignProjectWorkflow,
   configureSyncWorkflow,
   configureSyncWorkflowPreviousRelease,
@@ -8,6 +9,7 @@ import {
 } from '../src/workflows'
 import * as yaml from 'js-yaml'
 import {removeFile} from '../src/gitUtils'
+import {expect} from '@jest/globals'
 
 const releaseVersion = '11.0'
 const releaseBranch = 'release/11.0'
@@ -23,6 +25,11 @@ const assignProjectWorkflowTemplatePath = path.resolve(
 const assignProjectWorkflowPath = path.resolve(
   `${workspace}/${assignProjectWorkflowFile}`
 )
+const archiveConfigFile = 'archiveConfig.yml'
+const archiveConfigTemplatePath = path.resolve(
+  `${workspace}/archiveConfigTemplate.yml`
+)
+const archiveConfigPath = path.resolve(`${workspace}/${archiveConfigFile}`)
 
 test('setup sync workflow for next version', async () => {
   const syncRawData = fs.readFileSync(syncWorkflowTemplatePath, 'utf8')
@@ -85,4 +92,24 @@ test('setup assignProject workflow for next version', async () => {
     workflow.jobs['assign-project'].steps[0].with.PROJECT_COLUMN_ID
   ).toEqual('1234')
   await removeFile(assignProjectWorkflowPath)
+})
+
+test('setup archive config for next version', async () => {
+  const archiveConfigRawData = fs.readFileSync(
+    archiveConfigTemplatePath,
+    'utf8'
+  )
+  fs.writeFileSync(archiveConfigPath, archiveConfigRawData)
+  configureArchiveConfig(workspace, archiveConfigFile, '13.0', 11100111)
+  const newData = fs.readFileSync(archiveConfigPath, 'utf8')
+  const object = yaml.load(newData, {filename: archiveConfigPath})
+  const config = object as Workflow
+  const expected = {
+    'refs/heads/production/10.0': 12345678,
+    'refs/heads/production/11.0': 87654321,
+    'refs/heads/production/12.0': 54321678,
+    'refs/heads/production/13.0': 11100111
+  }
+  expect(config.projectsDoneColumns).toMatchObject(expected)
+  await removeFile(archiveConfigPath)
 })

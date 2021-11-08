@@ -30,6 +30,9 @@ export interface Workflow {
       }[]
     }
   }
+  projectsDoneColumns: {
+    [key: string]: number
+  }
 }
 
 export const configureSyncWorkflow = (
@@ -72,6 +75,18 @@ export const configureAssignProjectWorkflow = (
   workflow.jobs['assign-project'].steps[0].with.PROJECT_COLUMN_ID =
     projectColumnId
   writeWorkflow(workflow, workspace, workflowPath)
+}
+
+export const configureArchiveConfig = (
+  workspace: string,
+  configPath: string,
+  releaseVersion: string,
+  projectColumnId: number
+): void => {
+  const config = loadWorkflow(workspace, configPath)
+  config.projectsDoneColumns[`refs/heads/production/${releaseVersion}`] =
+    projectColumnId
+  writeWorkflow(config, workspace, configPath)
 }
 
 const loadWorkflow = (workspace: string, workflowPath: string): Workflow => {

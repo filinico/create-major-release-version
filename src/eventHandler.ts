@@ -50,6 +50,7 @@ export interface GitHubContext {
   versionPath: string
   scriptsPath: string
   assignProjectPath: string
+  archiveConfigPath: string
 }
 
 interface ReleaseInfo {
