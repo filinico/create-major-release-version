@@ -5,7 +5,7 @@ import {
 } from '../src/scripts'
 import path from 'path'
 import fs from 'fs'
-import {removeDirectory} from '../src/gitUtils'
+import {removeDirectory, removeFile} from '../src/gitUtils'
 import {expect} from '@jest/globals'
 
 jest.setTimeout(70000)
@@ -37,6 +37,7 @@ test('apply versions into file', async () => {
   applyVersionsIntoFile(filePath, 'v.0.010', 'v.0.011', 'v.110')
   const newData = fs.readFileSync(filePath, 'utf8')
   expect(newData).toMatchSnapshot()
+  await removeFile(filePath)
 })
 
 test('configure scripts', async () => {

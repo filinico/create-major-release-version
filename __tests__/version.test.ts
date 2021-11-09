@@ -8,6 +8,7 @@ import {
 } from '../src/version'
 import fs from 'fs'
 import path from 'path'
+import {removeFile} from '../src/gitUtils'
 
 test('extract release version from tag', async () => {
   const releaseVersion1 = getVersionFromTag('test', 'test1.0.0')
@@ -35,6 +36,7 @@ test('apply next version', async () => {
   applyNextVersion('v.0.011', workspace, versionFile)
   const nextVersion = fs.readFileSync(versionPath, 'utf8')
   expect(nextVersion).toEqual('v.0.011')
+  await removeFile(versionPath)
 })
 
 test('comply to pre release version numbering', async () => {

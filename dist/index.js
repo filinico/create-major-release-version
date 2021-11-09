@@ -16693,7 +16693,7 @@ const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch, pre
     core.info(`Previous release branch merged`);
     (0, settings_1.writeCodeOwners)(workspace, codeOwners);
     (0, settings_1.configureSettings)(releaseVersion, workspace, settingsPath, versionPrefix, target_commitish);
-    (0, workflows_1.configureWorkflow)(releaseVersion, workspace, workflowPath, target_commitish);
+    (0, workflows_1.configureSyncWorkflow)(releaseVersion, workspace, workflowPath, target_commitish);
     yield (0, projects_1.configureProjects)(actionContext, releaseVersion);
     yield (0, gitUtils_1.commit)(`setup new version ${releaseVersion}`);
     core.info(`changes committed`);
@@ -16708,7 +16708,7 @@ const configurePreviousVersion = (actionContext, releaseVersion, previousVersion
     core.info(`fetch successful`);
     const configurationBranch = `automation/configure-previous-version-${previousVersion}`;
     yield (0, gitUtils_1.createBranch)(configurationBranch, previousReleaseBranch);
-    (0, workflows_1.configureWorkflowPreviousRelease)(releaseVersion, workspace, workflowPath);
+    (0, workflows_1.configureSyncWorkflowPreviousRelease)(releaseVersion, workspace, workflowPath);
     yield (0, gitUtils_1.commit)(`configure new version ${releaseVersion} on ${previousVersion}`);
     core.info(`changes committed`);
     yield (0, gitUtils_1.push)();
@@ -16871,7 +16871,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.renameFile = exports.removeDirectory = exports.copyDirectory = exports.mergeIntoCurrent = exports.diff = exports.push = exports.commit = exports.addAuthor = exports.fetch = exports.doesBranchExist = exports.createBranch = exports.createDirectory = exports.gotoDirectory = void 0;
+exports.renameFile = exports.removeFile = exports.removeDirectory = exports.copyDirectory = exports.mergeIntoCurrent = exports.diff = exports.push = exports.commit = exports.addAuthor = exports.fetch = exports.doesBranchExist = exports.createBranch = exports.createDirectory = exports.gotoDirectory = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const os = __importStar(__nccwpck_require__(2087));
 const promisify_child_process_1 = __nccwpck_require__(2809);
@@ -16973,6 +16973,17 @@ const removeDirectory = (directory) => __awaiter(void 0, void 0, void 0, functio
     }
 });
 exports.removeDirectory = removeDirectory;
+const removeFile = (filePath) => __awaiter(void 0, void 0, void 0, function* () {
+    let command = `rm ${filePath}`;
+    if (os.platform() === 'win32') {
+        command = `del /q ${filePath}`;
+    }
+    const { stderr } = yield (0, promisify_child_process_1.exec)(command);
+    if (stderr) {
+        core.error(stderr.toString());
+    }
+});
+exports.removeFile = removeFile;
 const renameFile = (oldFile, newFile) => __awaiter(void 0, void 0, void 0, function* () {
     let command = `mv ${oldFile} ${newFile}`;
     if (os.platform() === 'win32') {
@@ -17322,6 +17333,12 @@ function run() {
             const workflowPath = core.getInput('WORKFLOW_FILE', { required: true });
             const versionPath = core.getInput('VERSION_FILE', { required: true });
             const scriptsPath = core.getInput('SCRIPTS_PATH', { required: true });
+            const assignProjectPath = core.getInput('ASSIGN_PROJECT_FILE', {
+                required: true
+            });
+            const archiveConfigPath = core.getInput('ARCHIVE_CONFIG_FILE', {
+                required: true
+            });
             core.info(`GITHUB workspace=${process.env.GITHUB_WORKSPACE}`);
             if (process.env.GITHUB_WORKSPACE === undefined) {
                 throw new Error('GITHUB_WORKSPACE not defined.');
@@ -17338,7 +17355,9 @@ function run() {
                 gitEmail,
                 workflowPath,
                 versionPath,
-                scriptsPath
+                scriptsPath,
+                assignProjectPath,
+                archiveConfigPath
             };
             const jiraContext = {
                 subDomain: core.getInput('JIRA_SUBDOMAIN', { required: true }),
@@ -17399,10 +17418,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.configureProjects = void 0;
+const workflows_1 = __nccwpck_require__(4949);
 const gitHubApi_1 = __nccwpck_require__(3562);
 const configureProjects = (actionContext, releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
-    yield createProjectBoard(actionContext, releaseVersion);
-    // TODO: configure projects workflows
+    const { inProgressColumnId, doneColumnId } = yield createProjectBoard(actionContext, releaseVersion);
+    const { workspace, assignProjectPath, archiveConfigPath } = actionContext;
+    (0, workflows_1.configureAssignProjectWorkflow)(workspace, assignProjectPath, releaseVersion, inProgressColumnId.toString());
+    (0, workflows_1.configureArchiveConfig)(workspace, archiveConfigPath, releaseVersion, doneColumnId);
 });
 exports.configureProjects = configureProjects;
 const createProjectBoard = (actionContext, releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
@@ -17680,12 +17702,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.configureWorkflowPreviousRelease = exports.configureWorkflow = void 0;
+exports.configureArchiveConfig = exports.configureAssignProjectWorkflow = exports.configureSyncWorkflowPreviousRelease = exports.configureSyncWorkflow = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const yaml = __importStar(__nccwpck_require__(1917));
 const fs_1 = __importDefault(__nccwpck_require__(5747));
 const path_1 = __importDefault(__nccwpck_require__(5622));
-const configureWorkflow = (releaseVersion, workspace, workflowPath, mainBranch) => {
+const configureSyncWorkflow = (releaseVersion, workspace, workflowPath, mainBranch) => {
     const workflow = loadWorkflow(workspace, workflowPath);
     const releaseBranch = `release/${releaseVersion}`;
     workflow.name = `Sync ${releaseVersion} upwards`;
@@ -17694,13 +17716,30 @@ const configureWorkflow = (releaseVersion, workspace, workflowPath, mainBranch) 
     workflow.jobs['sync-branches'].steps[2].with.TARGET_BRANCH = mainBranch;
     writeWorkflow(workflow, workspace, workflowPath);
 };
-exports.configureWorkflow = configureWorkflow;
-const configureWorkflowPreviousRelease = (releaseVersion, workspace, workflowPath) => {
+exports.configureSyncWorkflow = configureSyncWorkflow;
+const configureSyncWorkflowPreviousRelease = (releaseVersion, workspace, workflowPath) => {
     const workflow = loadWorkflow(workspace, workflowPath);
     workflow.jobs['sync-branches'].steps[2].with.TARGET_BRANCH = `release/${releaseVersion}`;
     writeWorkflow(workflow, workspace, workflowPath);
 };
-exports.configureWorkflowPreviousRelease = configureWorkflowPreviousRelease;
+exports.configureSyncWorkflowPreviousRelease = configureSyncWorkflowPreviousRelease;
+const configureAssignProjectWorkflow = (workspace, workflowPath, releaseVersion, projectColumnId) => {
+    const workflow = loadWorkflow(workspace, workflowPath);
+    const releaseBranch = `release/${releaseVersion}`;
+    workflow.name = `Assign ${releaseVersion} project`;
+    workflow.on.pull_request.branches[0] = releaseBranch;
+    workflow.jobs['assign-project'].steps[0].with.PROJECT_COLUMN_ID =
+        projectColumnId;
+    writeWorkflow(workflow, workspace, workflowPath);
+};
+exports.configureAssignProjectWorkflow = configureAssignProjectWorkflow;
+const configureArchiveConfig = (workspace, configPath, releaseVersion, projectColumnId) => {
+    const config = loadWorkflow(workspace, configPath);
+    config.projectsDoneColumns[`refs/heads/production/${releaseVersion}`] =
+        projectColumnId;
+    writeWorkflow(config, workspace, configPath);
+};
+exports.configureArchiveConfig = configureArchiveConfig;
 const loadWorkflow = (workspace, workflowPath) => {
     core.info(`workflowPath:${workflowPath}`);
     const filePath = path_1.default.resolve(workspace, workflowPath);

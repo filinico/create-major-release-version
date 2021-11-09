@@ -1,0 +1,15 @@
+name: Assign 10.0 project
+on:
+  pull_request:
+    types: [opened, edited, reopened, unlocked]
+    branches:
+      - 'release/10.0'
+
+jobs:
+  assign-project:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: myproject/project@v6.0
+        with:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          PROJECT_COLUMN_ID: 54321

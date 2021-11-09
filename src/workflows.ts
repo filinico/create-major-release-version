@@ -9,6 +9,9 @@ export interface Workflow {
     push: {
       branches: string[]
     }
+    pull_request: {
+      branches: string[]
+    }
   }
   jobs: {
     'sync-branches': {
@@ -19,10 +22,20 @@ export interface Workflow {
         }
       }[]
     }
+    'assign-project': {
+      steps: {
+        with: {
+          PROJECT_COLUMN_ID: string
+        }
+      }[]
+    }
+  }
+  projectsDoneColumns: {
+    [key: string]: number
   }
 }
 
-export const configureWorkflow = (
+export const configureSyncWorkflow = (
   releaseVersion: string,
   workspace: string,
   workflowPath: string,
@@ -37,7 +50,7 @@ export const configureWorkflow = (
   writeWorkflow(workflow, workspace, workflowPath)
 }
 
-export const configureWorkflowPreviousRelease = (
+export const configureSyncWorkflowPreviousRelease = (
   releaseVersion: string,
   workspace: string,
   workflowPath: string
@@ -47,6 +60,33 @@ export const configureWorkflowPreviousRelease = (
     'sync-branches'
   ].steps[2].with.TARGET_BRANCH = `release/${releaseVersion}`
   writeWorkflow(workflow, workspace, workflowPath)
+}
+
+export const configureAssignProjectWorkflow = (
+  workspace: string,
+  workflowPath: string,
+  releaseVersion: string,
+  projectColumnId: string
+): void => {
+  const workflow = loadWorkflow(workspace, workflowPath)
+  const releaseBranch = `release/${releaseVersion}`
+  workflow.name = `Assign ${releaseVersion} project`
+  workflow.on.pull_request.branches[0] = releaseBranch
+  workflow.jobs['assign-project'].steps[0].with.PROJECT_COLUMN_ID =
+    projectColumnId
+  writeWorkflow(workflow, workspace, workflowPath)
+}
+
+export const configureArchiveConfig = (
+  workspace: string,
+  configPath: string,
+  releaseVersion: string,
+  projectColumnId: number
+): void => {
+  const config = loadWorkflow(workspace, configPath)
+  config.projectsDoneColumns[`refs/heads/production/${releaseVersion}`] =
+    projectColumnId
+  writeWorkflow(config, workspace, configPath)
 }
 
 const loadWorkflow = (workspace: string, workflowPath: string): Workflow => {

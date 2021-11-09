@@ -1,6 +1,7 @@
 import path from 'path'
 import fs from 'fs'
 import {configureSettings, getVersionsFromSettings} from '../src/settings'
+import {removeFile} from '../src/gitUtils'
 
 const workspace = './__tests__/testData'
 const settingFile = 'config.json'
@@ -15,8 +16,7 @@ const nextArtifactVersion = 'v.120'
 beforeEach(() => {
   const configTemplatePath = path.resolve(settingTemplatePath)
   const rawData = fs.readFileSync(configTemplatePath, 'utf8')
-  const configPath = path.resolve(settingPath)
-  fs.writeFileSync(configPath, rawData)
+  fs.writeFileSync(settingPath, rawData)
 })
 
 test('setup settings for next version', async () => {
@@ -45,4 +45,5 @@ test('setup settings for next version', async () => {
   expect(nextVersions.currentDbVersion).toEqual(currentDbVersion)
   expect(nextVersions.nextDbVersion).toEqual(nextDbVersion)
   expect(nextVersions.nextArtifactVersion).toEqual(nextArtifactVersion)
+  await removeFile(settingPath)
 })

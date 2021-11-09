@@ -1,3 +1,7 @@
+import {
+  configureArchiveConfig,
+  configureAssignProjectWorkflow
+} from './workflows'
 import {createProject, createProjectColumn} from './gitHubApi'
 import {GitHubContext} from './eventHandler'
 
@@ -10,8 +14,23 @@ export const configureProjects = async (
   actionContext: GitHubContext,
   releaseVersion: string
 ): Promise<void> => {
-  await createProjectBoard(actionContext, releaseVersion)
-  // TODO: configure projects workflows
+  const {inProgressColumnId, doneColumnId} = await createProjectBoard(
+    actionContext,
+    releaseVersion
+  )
+  const {workspace, assignProjectPath, archiveConfigPath} = actionContext
+  configureAssignProjectWorkflow(
+    workspace,
+    assignProjectPath,
+    releaseVersion,
+    inProgressColumnId.toString()
+  )
+  configureArchiveConfig(
+    workspace,
+    archiveConfigPath,
+    releaseVersion,
+    doneColumnId
+  )
 }
 
 const createProjectBoard = async (
