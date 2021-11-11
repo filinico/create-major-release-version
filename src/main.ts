@@ -59,7 +59,14 @@ async function run(): Promise<void> {
       masterProjectKey: core.getInput('JIRA_MASTER_PROJECT_KEY', {
         required: true
       }),
-      masterIssueType: core.getInput('JIRA_MASTER_ISSUE_TYPE', {required: true})
+      masterIssueType: core.getInput('JIRA_MASTER_ISSUE_TYPE', {
+        required: true
+      }),
+      ancestorPage: core.getInput('CONFLUENCE_ANCESTOR', {required: true}),
+      confluenceSpaceKey: core.getInput('CONFLUENCE_SPACE', {required: true}),
+      confluenceContentPath: core.getInput('CONFLUENCE_CONTENT_FILE', {
+        required: true
+      })
     }
 
     core.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`)

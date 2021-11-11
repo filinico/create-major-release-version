@@ -1,0 +1,4 @@
+<div>
+    <h1>Release {{RELEASE_VERSION}}</h1>
+    <p>the major version "{{RELEASE_VERSION}}" was created.</p>
+</div>

@@ -1,0 +1,8 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`create content page from template 1`] = `
+"<div>
+    <h1>Release 11.0</h1>
+    <p>the major version \\"11.0\\" was created.</p>
+</div>"
+`;

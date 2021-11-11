@@ -19,6 +19,7 @@ import {
   getVersionFromTag,
   verifyPreReleaseNumbering
 } from './version'
+import {configureJira, createReleaseContentPage} from './jiraUpdate'
 import {
   configureSettings,
   getVersionsFromSettings,
@@ -32,9 +33,10 @@ import {
 import {mergePullRequest, openPullRequest} from './gitHubApi'
 import {Context} from '@actions/github/lib/context'
 import {JiraContext} from './jiraApi'
-import {configureJira} from './jiraUpdate'
+import {adaptContentForMajorVersion} from './contentPage'
 import {configureProjects} from './projects'
 import {configureScripts} from './scripts'
+
 type GitHub = ReturnType<typeof github.getOctokit>
 
 export interface GitHubContext {
@@ -148,6 +150,7 @@ export const onReleaseCreated = async (
     releaseBranch
   )
   await configureJira(jiraContext, releaseVersion, tagPrefix)
+  await setupConfluence(actionContext, jiraContext, releaseVersion)
   const currentRelease = releaseVersion.replace('.0', '')
   const nextRelease = getNextVersion(releaseVersion).replace('.0', '')
   return {
@@ -302,4 +305,19 @@ const configureNextVersion = async (
     core.error(`PR not merged on ${target_commitish}`)
   }
   core.info(`Next version configured on ${target_commitish}`)
+}
+
+export const setupConfluence = async (
+  actionContext: GitHubContext,
+  jiraContext: JiraContext,
+  releaseVersion: string
+): Promise<void> => {
+  const {workspace} = actionContext
+  const {confluenceContentPath} = jiraContext
+  const contentPage = adaptContentForMajorVersion(
+    workspace,
+    confluenceContentPath,
+    releaseVersion
+  )
+  await createReleaseContentPage(jiraContext, releaseVersion, contentPage)
 }

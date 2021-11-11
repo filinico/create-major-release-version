@@ -16579,6 +16579,28 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
+/***/ 7485:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.adaptContentForMajorVersion = void 0;
+const fs_1 = __importDefault(__nccwpck_require__(5747));
+const path_1 = __importDefault(__nccwpck_require__(5622));
+const adaptContentForMajorVersion = (workspace, contentPath, releaseVersion) => {
+    const filePath = path_1.default.resolve(workspace, contentPath);
+    const rawData = fs_1.default.readFileSync(filePath, 'utf8');
+    return rawData.replace(/{{RELEASE_VERSION}}/g, releaseVersion);
+};
+exports.adaptContentForMajorVersion = adaptContentForMajorVersion;
+
+
+/***/ }),
+
 /***/ 7774:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -16613,14 +16635,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.onReleaseCreated = void 0;
+exports.setupConfluence = exports.onReleaseCreated = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const gitUtils_1 = __nccwpck_require__(4755);
 const version_1 = __nccwpck_require__(1946);
+const jiraUpdate_1 = __nccwpck_require__(556);
 const settings_1 = __nccwpck_require__(1685);
 const workflows_1 = __nccwpck_require__(4949);
 const gitHubApi_1 = __nccwpck_require__(3562);
-const jiraUpdate_1 = __nccwpck_require__(556);
+const contentPage_1 = __nccwpck_require__(7485);
 const projects_1 = __nccwpck_require__(5827);
 const scripts_1 = __nccwpck_require__(7512);
 const onReleaseCreated = (actionContext, jiraContext) => __awaiter(void 0, void 0, void 0, function* () {
@@ -16671,6 +16694,7 @@ const onReleaseCreated = (actionContext, jiraContext) => __awaiter(void 0, void 
     yield createNewMajorVersion(actionContext, releaseVersion, releaseBranch, previousVersion, previousReleaseBranch);
     yield configureNextVersion(actionContext, releaseVersion, previousVersion, releaseBranch);
     yield (0, jiraUpdate_1.configureJira)(jiraContext, releaseVersion, tagPrefix);
+    yield (0, exports.setupConfluence)(actionContext, jiraContext, releaseVersion);
     const currentRelease = releaseVersion.replace('.0', '');
     const nextRelease = (0, version_1.getNextVersion)(releaseVersion).replace('.0', '');
     return {
@@ -16760,6 +16784,13 @@ const configureNextVersion = (actionContext, releaseVersion, previousVersion, re
     }
     core.info(`Next version configured on ${target_commitish}`);
 });
+const setupConfluence = (actionContext, jiraContext, releaseVersion) => __awaiter(void 0, void 0, void 0, function* () {
+    const { workspace } = actionContext;
+    const { confluenceContentPath } = jiraContext;
+    const contentPage = (0, contentPage_1.adaptContentForMajorVersion)(workspace, confluenceContentPath, releaseVersion);
+    yield (0, jiraUpdate_1.createReleaseContentPage)(jiraContext, releaseVersion, contentPage);
+});
+exports.setupConfluence = setupConfluence;
 
 
 /***/ }),
@@ -17037,7 +17068,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.createIssue = exports.searchIssues = exports.createVersion = exports.listProjectVersions = void 0;
+exports.createConfluencePage = exports.createIssue = exports.searchIssues = exports.createVersion = exports.listProjectVersions = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const axios_1 = __importDefault(__nccwpck_require__(6545));
 const listProjectVersions = (context, projectKey) => __awaiter(void 0, void 0, void 0, function* () {
@@ -17132,6 +17163,25 @@ const getAuthHeaders = (email, token) => {
         }
     };
 };
+const createConfluencePage = (context, data) => __awaiter(void 0, void 0, void 0, function* () {
+    const { subDomain, email, token } = context;
+    try {
+        core.info('request createConfluencePage');
+        core.info(`CreateConfluencePage:${JSON.stringify(data)}`);
+        const response = yield axios_1.default.post(`https://${subDomain}.atlassian.net/wiki/rest/api/content/`, data, getAuthHeaders(email, token));
+        core.info(`createConfluencePage successful`);
+        return response === null || response === void 0 ? void 0 : response.data;
+    }
+    catch (error) {
+        core.error('error during createIssue request');
+        if (axios_1.default.isAxiosError(error)) {
+            core.error(error.message);
+            core.error(JSON.stringify(error.toJSON));
+        }
+        return Promise.reject(error);
+    }
+});
+exports.createConfluencePage = createConfluencePage;
 
 
 /***/ }),
@@ -17170,7 +17220,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getMasterTicketKey = exports.createMasterTicket = exports.createIfNotExistsJiraVersion = exports.configureJira = void 0;
+exports.createReleaseContentPage = exports.getMasterTicketKey = exports.createMasterTicket = exports.createIfNotExistsJiraVersion = exports.configureJira = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const jiraApi_1 = __nccwpck_require__(929);
 const configureJira = (jiraContext, releaseVersion, tagPrefix) => __awaiter(void 0, void 0, void 0, function* () {
@@ -17280,6 +17330,30 @@ const getMasterTicketKey = (context, fixVersion) => __awaiter(void 0, void 0, vo
     return masterTicketIssueKey;
 });
 exports.getMasterTicketKey = getMasterTicketKey;
+const createReleaseContentPage = (context, releaseVersion, contentPage) => __awaiter(void 0, void 0, void 0, function* () {
+    const { subDomain, confluenceSpaceKey, ancestorPage } = context;
+    const confluencePage = {
+        title: `Release content of major version ${releaseVersion}`,
+        type: 'page',
+        space: {
+            key: confluenceSpaceKey
+        },
+        ancestors: [
+            {
+                id: parseInt(ancestorPage)
+            }
+        ],
+        body: {
+            storage: {
+                representation: 'storage',
+                value: contentPage
+            }
+        }
+    };
+    const createdPage = yield (0, jiraApi_1.createConfluencePage)(context, confluencePage);
+    core.info(`created confluence page: https://${subDomain}.atlassian.net/wiki${createdPage._links.webui}`);
+});
+exports.createReleaseContentPage = createReleaseContentPage;
 
 
 /***/ }),
@@ -17375,7 +17449,14 @@ function run() {
                 masterProjectKey: core.getInput('JIRA_MASTER_PROJECT_KEY', {
                     required: true
                 }),
-                masterIssueType: core.getInput('JIRA_MASTER_ISSUE_TYPE', { required: true })
+                masterIssueType: core.getInput('JIRA_MASTER_ISSUE_TYPE', {
+                    required: true
+                }),
+                ancestorPage: core.getInput('CONFLUENCE_ANCESTOR', { required: true }),
+                confluenceSpaceKey: core.getInput('CONFLUENCE_SPACE', { required: true }),
+                confluenceContentPath: core.getInput('CONFLUENCE_CONTENT_FILE', {
+                    required: true
+                })
             };
             core.info(`GITHUB_EVENT_NAME=${process.env.GITHUB_EVENT_NAME}`);
             core.info(`GITHUB context action=${gitHubContext.context.payload.action}`);
