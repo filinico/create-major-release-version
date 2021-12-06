@@ -10,6 +10,9 @@ export interface JiraContext {
   masterProjectId: string
   masterProjectKey: string
   masterIssueType: string
+  ancestorPage: string
+  confluenceSpaceKey: string
+  confluenceContentPath: string
 }
 
 export interface JiraVersion {
@@ -112,6 +115,33 @@ interface JiraFields {
   customfield_23710?: JiraCustomField
   customfield_21603?: JiraCustomField
   customfield_12803?: JiraCustomField
+}
+
+export interface CreateConfluencePage {
+  type: string
+  title: string
+  ancestors: {
+    id: number
+  }[]
+  space: {
+    key: string
+  }
+  body: {
+    storage: {
+      value: string
+      representation: string
+    }
+  }
+}
+
+export interface CreatedConfluencePage {
+  id: string
+  type: string
+  status: string
+  title: string
+  _links: {
+    webui: string
+  }
 }
 
 export const listProjectVersions = async (
@@ -229,5 +259,30 @@ const getAuthHeaders = (email: string, token: string): AuthHeaders => {
       )}`,
       Accept: 'application/json'
     }
+  }
+}
+
+export const createConfluencePage = async (
+  context: JiraContext,
+  data: CreateConfluencePage
+): Promise<CreatedConfluencePage> => {
+  const {subDomain, email, token} = context
+  try {
+    core.info('request createConfluencePage')
+    core.info(`CreateConfluencePage:${JSON.stringify(data)}`)
+    const response = await axios.post(
+      `https://${subDomain}.atlassian.net/wiki/rest/api/content/`,
+      data,
+      getAuthHeaders(email, token)
+    )
+    core.info(`createConfluencePage successful`)
+    return response?.data
+  } catch (error: unknown) {
+    core.error('error during createIssue request')
+    if (axios.isAxiosError(error)) {
+      core.error(error.message)
+      core.error(JSON.stringify(error.toJSON))
+    }
+    return Promise.reject(error)
   }
 }

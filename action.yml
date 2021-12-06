@@ -59,6 +59,15 @@ inputs:
   JIRA_MASTER_ISSUE_TYPE:
     description: "master issue type id from jira cloud"
     required: true
+  CONFLUENCE_ANCESTOR:
+    description: "ancestor id from confluence cloud"
+    required: true
+  CONFLUENCE_SPACE:
+    description: "space key from confluence cloud"
+    required: true
+  CONFLUENCE_CONTENT_FILE:
+    description: "content file path for the confluence cloud page"
+    required: true
 outputs:
   RELEASE_INFO:
     description: "Information about created release version."

@@ -1,7 +1,9 @@
 import * as core from '@actions/core'
 import {
+  CreateConfluencePage,
   JiraContext,
   JiraVersion,
+  createConfluencePage,
   createIssue,
   createVersion,
   listProjectVersions,
@@ -153,4 +155,35 @@ export const getMasterTicketKey = async (
   }
   core.info(`masterTicketIssueKey:${masterTicketIssueKey}`)
   return masterTicketIssueKey
+}
+
+export const createReleaseContentPage = async (
+  context: JiraContext,
+  releaseVersion: string,
+  contentPage: string
+): Promise<void> => {
+  const {subDomain, confluenceSpaceKey, ancestorPage} = context
+  const confluencePage: CreateConfluencePage = {
+    title: `Release content of major version ${releaseVersion}`,
+    type: 'page',
+    space: {
+      key: confluenceSpaceKey
+    },
+    ancestors: [
+      {
+        id: parseInt(ancestorPage)
+      }
+    ],
+    body: {
+      storage: {
+        representation: 'storage',
+        value: contentPage
+      }
+    }
+  }
+
+  const createdPage = await createConfluencePage(context, confluencePage)
+  core.info(
+    `created confluence page: https://${subDomain}.atlassian.net/wiki${createdPage._links.webui}`
+  )
 }
