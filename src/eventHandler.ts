@@ -19,13 +19,14 @@ import {
   getVersionFromTag,
   verifyPreReleaseNumbering
 } from './version'
-import {configureJira, createReleaseContentPage} from './jiraUpdate'
 import {
+  configureAppSettings,
   configureSettings,
   getVersionsFromSettings,
   loadCodeOwners,
   writeCodeOwners
 } from './settings'
+import {configureJira, createReleaseContentPage} from './jiraUpdate'
 import {
   configureSyncWorkflow,
   configureSyncWorkflowPreviousRelease
@@ -44,6 +45,7 @@ export interface GitHubContext {
   context: Context
   workspace: string
   settingsPath: string
+  appSettingsPath: string
   versionPrefix: string
   tagPrefix: string
   gitEmail: string
@@ -166,8 +168,14 @@ const createNewMajorVersion = async (
   previousVersion: string,
   previousReleaseBranch: string
 ): Promise<void> => {
-  const {context, workspace, settingsPath, versionPrefix, workflowPath} =
-    actionContext
+  const {
+    context,
+    workspace,
+    settingsPath,
+    versionPrefix,
+    workflowPath,
+    appSettingsPath
+  } = actionContext
   const {
     payload: {
       release: {target_commitish}
@@ -189,6 +197,14 @@ const createNewMajorVersion = async (
     settingsPath,
     versionPrefix,
     target_commitish
+  )
+  const {previousArtifactVersion, currentArtifactVersion} =
+    getVersionsFromSettings(workspace, settingsPath, target_commitish)
+  await configureAppSettings(
+    previousArtifactVersion,
+    currentArtifactVersion,
+    workspace,
+    appSettingsPath
   )
   configureSyncWorkflow(
     releaseVersion,

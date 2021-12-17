@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import * as fs from 'fs'
 import * as path from 'path'
+import {copyDirectory} from './gitUtils'
 
 export const configureSettings = (
   releaseVersion: string,
@@ -43,17 +44,19 @@ export const configureSettings = (
   core.info('settings changed')
 }
 
-interface DbVersions {
+interface VersionsSettings {
   currentDbVersion: string
   nextDbVersion: string
   nextArtifactVersion: string
+  currentArtifactVersion: string
+  previousArtifactVersion: string
 }
 
 export const getVersionsFromSettings = (
   workspace: string,
   settingsPath: string,
   mainBranch: string
-): DbVersions => {
+): VersionsSettings => {
   core.info(`settingsPath:${settingsPath}`)
   const filePath = path.resolve(workspace, settingsPath)
   const rawData = fs.readFileSync(filePath, 'utf8')
@@ -63,7 +66,11 @@ export const getVersionsFromSettings = (
     nextDbVersion: settings[mainBranch].database.version,
     currentDbVersion:
       settings.release[settings.release.length - 1].database.version,
-    nextArtifactVersion: settings[mainBranch].artifact.version
+    nextArtifactVersion: settings[mainBranch].artifact.version,
+    currentArtifactVersion:
+      settings.release[settings.release.length - 1].artifact.version,
+    previousArtifactVersion:
+      settings.release[settings.release.length - 2].artifact.version
   }
 }
 
@@ -82,4 +89,23 @@ export const writeCodeOwners = (
     path.resolve(workspace, '.github', 'CODEOWNERS'),
     codeOwners
   )
+}
+
+export const configureAppSettings = async (
+  previousArtifactVersion: string,
+  currentArtifactVersion: string,
+  workspace: string,
+  appSettingsPath: string
+): Promise<void> => {
+  const copyFrom = path.resolve(
+    workspace,
+    appSettingsPath,
+    `${previousArtifactVersion}`
+  )
+  const copyTo = path.resolve(
+    workspace,
+    appSettingsPath,
+    `${currentArtifactVersion}`
+  )
+  await copyDirectory(copyFrom, copyTo)
 }

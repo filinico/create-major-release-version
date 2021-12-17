@@ -2,6 +2,15 @@
   "release":[
     {
       "artifact": {
+        "version": "v.090",
+        "source": "myArtifact/release_1.0/artifact.zip"
+      },
+      "database": {
+        "version": "v.0.09"
+      }
+    },
+    {
+      "artifact": {
         "version": "v.100",
         "source": "myArtifact/release_1.0/artifact.zip"
       },

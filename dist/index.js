@@ -16639,8 +16639,8 @@ exports.setupConfluence = exports.onReleaseCreated = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const gitUtils_1 = __nccwpck_require__(4755);
 const version_1 = __nccwpck_require__(1946);
-const jiraUpdate_1 = __nccwpck_require__(556);
 const settings_1 = __nccwpck_require__(1685);
+const jiraUpdate_1 = __nccwpck_require__(556);
 const workflows_1 = __nccwpck_require__(4949);
 const gitHubApi_1 = __nccwpck_require__(3562);
 const contentPage_1 = __nccwpck_require__(7485);
@@ -16704,7 +16704,7 @@ const onReleaseCreated = (actionContext, jiraContext) => __awaiter(void 0, void 
 });
 exports.onReleaseCreated = onReleaseCreated;
 const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch, previousVersion, previousReleaseBranch) => __awaiter(void 0, void 0, void 0, function* () {
-    const { context, workspace, settingsPath, versionPrefix, workflowPath } = actionContext;
+    const { context, workspace, settingsPath, versionPrefix, workflowPath, appSettingsPath } = actionContext;
     const { payload: { release: { target_commitish } } } = context;
     core.info(`Start creation of new major version`);
     yield (0, gitUtils_1.fetch)(previousReleaseBranch);
@@ -16717,6 +16717,8 @@ const createNewMajorVersion = (actionContext, releaseVersion, releaseBranch, pre
     core.info(`Previous release branch merged`);
     (0, settings_1.writeCodeOwners)(workspace, codeOwners);
     (0, settings_1.configureSettings)(releaseVersion, workspace, settingsPath, versionPrefix, target_commitish);
+    const { previousArtifactVersion, currentArtifactVersion } = (0, settings_1.getVersionsFromSettings)(workspace, settingsPath, target_commitish);
+    yield (0, settings_1.configureAppSettings)(previousArtifactVersion, currentArtifactVersion, workspace, appSettingsPath);
     (0, workflows_1.configureSyncWorkflow)(releaseVersion, workspace, workflowPath, target_commitish);
     yield (0, projects_1.configureProjects)(actionContext, releaseVersion);
     yield (0, gitUtils_1.commit)(`setup new version ${releaseVersion}`);
@@ -17400,6 +17402,7 @@ function run() {
         try {
             const githubToken = core.getInput('GITHUB_TOKEN', { required: true });
             const settingsPath = core.getInput('SETTINGS_FILE', { required: true });
+            const appSettingsPath = core.getInput('APP_SETTINGS', { required: true });
             const versionPrefix = core.getInput('VERSION_PREFIX', { required: true });
             const tagPrefix = core.getInput('TAG_PREFIX', { required: true });
             const gitEmail = core.getInput('GIT_USER_EMAIL', { required: true });
@@ -17423,6 +17426,7 @@ function run() {
                 context: github.context,
                 workspace: process.env.GITHUB_WORKSPACE,
                 settingsPath,
+                appSettingsPath,
                 versionPrefix,
                 tagPrefix,
                 gitUser,
@@ -17631,11 +17635,21 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.writeCodeOwners = exports.loadCodeOwners = exports.getVersionsFromSettings = exports.configureSettings = void 0;
+exports.configureAppSettings = exports.writeCodeOwners = exports.loadCodeOwners = exports.getVersionsFromSettings = exports.configureSettings = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const fs = __importStar(__nccwpck_require__(5747));
 const path = __importStar(__nccwpck_require__(5622));
+const gitUtils_1 = __nccwpck_require__(4755);
 const configureSettings = (releaseVersion, workspace, settingsPath, versionPrefix, mainBranch) => {
     core.info(`settingsPath:${settingsPath}`);
     const filePath = path.resolve(workspace, settingsPath);
@@ -17672,7 +17686,9 @@ const getVersionsFromSettings = (workspace, settingsPath, mainBranch) => {
     return {
         nextDbVersion: settings[mainBranch].database.version,
         currentDbVersion: settings.release[settings.release.length - 1].database.version,
-        nextArtifactVersion: settings[mainBranch].artifact.version
+        nextArtifactVersion: settings[mainBranch].artifact.version,
+        currentArtifactVersion: settings.release[settings.release.length - 1].artifact.version,
+        previousArtifactVersion: settings.release[settings.release.length - 2].artifact.version
     };
 };
 exports.getVersionsFromSettings = getVersionsFromSettings;
@@ -17684,6 +17700,12 @@ const writeCodeOwners = (workspace, codeOwners) => {
     return fs.writeFileSync(path.resolve(workspace, '.github', 'CODEOWNERS'), codeOwners);
 };
 exports.writeCodeOwners = writeCodeOwners;
+const configureAppSettings = (previousArtifactVersion, currentArtifactVersion, workspace, appSettingsPath) => __awaiter(void 0, void 0, void 0, function* () {
+    const copyFrom = path.resolve(workspace, appSettingsPath, `${previousArtifactVersion}`);
+    const copyTo = path.resolve(workspace, appSettingsPath, `${currentArtifactVersion}`);
+    yield (0, gitUtils_1.copyDirectory)(copyFrom, copyTo);
+});
+exports.configureAppSettings = configureAppSettings;
 
 
 /***/ }),
