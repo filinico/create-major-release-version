@@ -82,6 +82,5 @@ test('setup app settings for new version', async () => {
     versions.currentArtifactVersion
   )
   fs.readFileSync(path.resolve(newVersionFolder, settingFile), 'utf8')
-  await removeFile(appSettingsFile)
   await removeDirectory(newVersionFolder)
 })
