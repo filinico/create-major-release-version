@@ -8,6 +8,9 @@ inputs:
   SETTINGS_FILE:
     description: "Path of the settings file."
     required: true
+  APP_SETTINGS:
+    description: "Path of the app settings folder."
+    required: true
   VERSION_PREFIX:
     description: "Prefix of the version."
     required: true

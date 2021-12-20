@@ -6,6 +6,7 @@ async function run(): Promise<void> {
   try {
     const githubToken = core.getInput('GITHUB_TOKEN', {required: true})
     const settingsPath = core.getInput('SETTINGS_FILE', {required: true})
+    const appSettingsPath = core.getInput('APP_SETTINGS', {required: true})
     const versionPrefix = core.getInput('VERSION_PREFIX', {required: true})
     const tagPrefix = core.getInput('TAG_PREFIX', {required: true})
     const gitEmail = core.getInput('GIT_USER_EMAIL', {required: true})
@@ -32,6 +33,7 @@ async function run(): Promise<void> {
       context: github.context,
       workspace: process.env.GITHUB_WORKSPACE,
       settingsPath,
+      appSettingsPath,
       versionPrefix,
       tagPrefix,
       gitUser,
