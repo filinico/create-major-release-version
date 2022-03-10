@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/filinico/create-major-release-version.git"
+    "url": "git+https://github.com/coupa/treasury_create-major-release-version.git"
   },
   "keywords": [
     "actions",
