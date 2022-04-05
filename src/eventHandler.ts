@@ -168,14 +168,8 @@ const createNewMajorVersion = async (
   previousVersion: string,
   previousReleaseBranch: string
 ): Promise<void> => {
-  const {
-    context,
-    workspace,
-    settingsPath,
-    versionPrefix,
-    workflowPath,
-    appSettingsPath
-  } = actionContext
+  const {context, workspace, settingsPath, versionPrefix, workflowPath} =
+    actionContext
   const {
     payload: {
       release: {target_commitish}
@@ -197,14 +191,6 @@ const createNewMajorVersion = async (
     settingsPath,
     versionPrefix,
     target_commitish
-  )
-  const {previousArtifactVersion, currentArtifactVersion} =
-    getVersionsFromSettings(workspace, settingsPath, target_commitish)
-  await configureAppSettings(
-    previousArtifactVersion,
-    currentArtifactVersion,
-    workspace,
-    appSettingsPath
   )
   configureSyncWorkflow(
     releaseVersion,
@@ -266,8 +252,14 @@ const configureNextVersion = async (
   previousVersion: string,
   releaseBranch: string
 ): Promise<void> => {
-  const {context, workspace, settingsPath, versionPath, scriptsPath} =
-    actionContext
+  const {
+    context,
+    workspace,
+    settingsPath,
+    versionPath,
+    scriptsPath,
+    appSettingsPath
+  } = actionContext
   const {
     payload: {
       release: {target_commitish}
@@ -284,8 +276,12 @@ const configureNextVersion = async (
   await mergeIntoCurrent(releaseBranch, configurationBranch)
   core.info(`Release branch merged into ${target_commitish}`)
   writeCodeOwners(workspace, codeOwners)
-  const {nextDbVersion, currentDbVersion, nextArtifactVersion} =
-    getVersionsFromSettings(workspace, settingsPath, target_commitish)
+  const {
+    currentArtifactVersion,
+    nextDbVersion,
+    currentDbVersion,
+    nextArtifactVersion
+  } = getVersionsFromSettings(workspace, settingsPath, target_commitish)
   applyNextVersion(nextArtifactVersion, workspace, versionPath)
   core.info(`Next version modified to ${nextDbVersion}`)
   await configureScripts(
@@ -296,6 +292,12 @@ const configureNextVersion = async (
     scriptsPath
   )
   core.info(`Scripts added for next version ${nextDbVersion}`)
+  await configureAppSettings(
+    currentArtifactVersion,
+    nextArtifactVersion,
+    workspace,
+    appSettingsPath
+  )
   await commit(`configure next version ${nextVersion} on ${target_commitish}`)
   core.info(`Next version changes committed`)
   await push()
