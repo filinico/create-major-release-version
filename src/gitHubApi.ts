@@ -1,3 +1,4 @@
+import * as core from '@actions/core'
 import {GitHubContext} from './eventHandler'
 
 export const openPullRequest = async (
@@ -11,16 +12,25 @@ export const openPullRequest = async (
   const {
     repo: {repo, owner}
   } = context
-  const {data: pullRequest} = await octokit.rest.pulls.create({
-    owner,
-    repo,
-    title,
-    body,
-    head: sourceBranch,
-    base: targetBranch,
-    draft: false
-  })
-  return pullRequest.number
+  try {
+    const {data: pullRequest} = await octokit.rest.pulls.create({
+      owner,
+      repo,
+      title,
+      body,
+      head: sourceBranch,
+      base: targetBranch,
+      draft: false
+    })
+    return pullRequest.number
+  } catch (err: unknown) {
+    core.error(
+      `There was an error during the opening of pull request ${sourceBranch} to ${targetBranch}`
+    )
+    const error = err as string
+    core.error(error)
+    return 0
+  }
 }
 
 export const mergePullRequest = async (
@@ -33,17 +43,26 @@ export const mergePullRequest = async (
   const {
     repo: {repo, owner}
   } = context
-  const {
-    data: {merged}
-  } = await octokit.rest.pulls.merge({
-    owner,
-    repo,
-    pull_number: pullRequestId,
-    commit_message: mergeCommitDescription,
-    commit_title: mergeCommitMessage,
-    merge_method: 'merge'
-  })
-  return merged
+  try {
+    const {
+      data: {merged}
+    } = await octokit.rest.pulls.merge({
+      owner,
+      repo,
+      pull_number: pullRequestId,
+      commit_message: mergeCommitDescription,
+      commit_title: mergeCommitMessage,
+      merge_method: 'merge'
+    })
+    return merged
+  } catch (err: unknown) {
+    core.error(
+      `There was an error during the merge of pull request ${pullRequestId}`
+    )
+    const error = err as string
+    core.error(error)
+    return false
+  }
 }
 
 export const createProject = async (
